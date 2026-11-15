@@ -19,6 +19,8 @@ final class InterruptionPanelManager {
     private var panel: InterruptionNSPanel?
     private var hostingController: NSHostingController<InterruptionView>?
 
+    var isShowing: Bool { panel != nil }
+
     func show(exercise: Exercise) {
         guard panel == nil else { return }
 

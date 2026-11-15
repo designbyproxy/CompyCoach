@@ -84,10 +84,8 @@ private struct MenuBarContent: View {
 
         Divider()
 
-        // Countdown — refreshes every minute while the menu is open
-        TimelineView(.periodic(from: .now, by: 60)) { ctx in
-            Text(countdown(at: ctx.date))
-        }
+        // Countdown of active time — freezes during calls, away time, and sleep
+        Text(countdownLine)
 
         Divider()
 
@@ -147,10 +145,14 @@ private struct MenuBarContent: View {
         store.targets[key] ?? DataStore.defaultTargets[key] ?? 0
     }
 
-    private func countdown(at now: Date) -> String {
-        let secs = engine.nextFireDate.timeIntervalSince(now)
-        guard secs > 60 else { return "Next: <1m" }
-        return "Next: \(Int(secs / 60))m"
+    private var countdownLine: String {
+        let mins = engine.remaining < 60 ? "<1m" : "\(Int(engine.remaining / 60))m"
+        switch engine.status {
+        case .running:      return "Next: \(mins)"
+        case .pausedCall:   return "Paused — on a call (\(mins) left)"
+        case .pausedAway:   return "Paused — away (\(mins) left)"
+        case .showingPanel: return "Nudge in progress"
+        }
     }
 }
 

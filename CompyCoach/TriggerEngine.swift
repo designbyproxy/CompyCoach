@@ -83,10 +83,16 @@ enum Exercise {
 final class TriggerEngine: ObservableObject {
     static let shared = TriggerEngine()
 
-    @Published private(set) var nextFireDate = Date.distantFuture
+    // Sampling cadence. Each sample reads idle time and the call detector, then
+    // advances the active-time countdown.
+    private static let sampleInterval: TimeInterval = 15
 
-    private var timer: DispatchSourceTimer?
-    private var wakeObserver: NSObjectProtocol?
+    @Published private(set) var status: ActiveCountdown.Status = .running
+    @Published private(set) var remaining: TimeInterval
+
+    private var countdown: ActiveCountdown
+    private var sampler: DispatchSourceTimer?
+    private var sampleInFlight = false
     private var rotationIndex = 0
 
     // Set when the user taps "Skip for now" on a walk — forces the walk to
@@ -97,47 +103,34 @@ final class TriggerEngine: ObservableObject {
     // The walk is offered again on later nudges today once conditions improve.
     private var walkOwedDate: Date?
 
-    // Call-guard state: when a timer fires while the camera or screen sharing
-    // is active, we hold off without advancing the rotation.  A poll timer
-    // checks every 30 s; once the session clears we wait another 30 s and fire.
-    private var callWatchPending = false
-    private var callWatchTimer: DispatchSourceTimer?
-    private var callWatchStarted: Date?
-
-    // Upper bound on how long a single deferral may hold. Past this, a "still in a
-    // call" reading is far more likely a stuck detector (e.g. a device that reports
-    // itself permanently in use) than a real session, so the watcher gives up and
-    // returns to the normal schedule. It never escalates to showing the panel —
-    // a missed nudge is cheap, a takeover mid-meeting is not.
-    private let maxCallHold: TimeInterval = 3 * 60 * 60
-
     // Walk sits at the end so it fires roughly every 6 cycles.
     private let rotation: [Exercise] = [.squats, .pushups, .standStretch, .situps, .eyeRelax, .walk]
 
-    private init() {}
+    private init() {
+        let first = Self.randomInterval()
+        countdown = ActiveCountdown(remaining: first, now: Date(),
+                                    maxSampleGap: Self.sampleInterval * 3)
+        remaining = first
+    }
+
+    private static func randomInterval() -> TimeInterval {
+        TimeInterval.random(in: 45 * 60 ... 75 * 60)
+    }
 
     func start() {
-        scheduleNext()
-        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
-            forName: NSWorkspace.didWakeNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                if self.nextFireDate <= Date() {
-                    // Interrupt was due while asleep — give a fresh interval.
-                    self.scheduleNext()
-                } else {
-                    // Time still remaining — re-arm the timer to the original fire date.
-                    self.rescheduleToFireDate()
-                }
-            }
+        guard sampler == nil else { return }
+        let t = DispatchSource.makeTimerSource(queue: .main)
+        t.schedule(deadline: .now() + Self.sampleInterval, repeating: Self.sampleInterval)
+        t.setEventHandler { [weak self] in
+            Task { @MainActor [weak self] in self?.sample() }
         }
+        t.resume()
+        sampler = t
     }
 
     func skipNext() {
-        scheduleNext()
+        countdown.restart(remaining: Self.randomInterval())
+        publish()
     }
 
     /// Called when the user taps "Skip for now" on a walk. Logs a skip and
@@ -147,104 +140,47 @@ final class TriggerEngine: ObservableObject {
         DataStore.shared.logSkip()
     }
 
-    private func scheduleNext() {
-        timer?.cancel()
-        timer = nil
-        let interval = TimeInterval.random(in: 45 * 60 ... 75 * 60)
-        nextFireDate = Date().addingTimeInterval(interval)
-        let t = DispatchSource.makeTimerSource(queue: .main)
-        t.schedule(deadline: .now() + interval)
-        t.setEventHandler { [weak self] in
-            Task { @MainActor [weak self] in self?.timerFired() }
-        }
-        t.resume()
-        timer = t
-    }
+    // MARK: Sampling
 
-    private func rescheduleToFireDate() {
-        timer?.cancel()
-        timer = nil
-        let remaining = nextFireDate.timeIntervalSinceNow
-        let t = DispatchSource.makeTimerSource(queue: .main)
-        t.schedule(deadline: .now() + remaining)
-        t.setEventHandler { [weak self] in
-            Task { @MainActor [weak self] in self?.timerFired() }
-        }
-        t.resume()
-        timer = t
-    }
-
-    private func timerFired() {
-        let idleSeconds = [CGEventType.mouseMoved, .keyDown, .leftMouseDown, .scrollWheel]
-            .map { CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: $0) }
-            .min() ?? 0
-        guard idleSeconds < 5 * 60 else {
-            scheduleNext()
-            return
-        }
-
-        // If we're already waiting for a call to end, let the existing watcher
-        // handle firing — don't double-queue an exercise or restart the watcher.
-        guard !callWatchPending else {
-            scheduleNext()
-            return
-        }
+    private func sample() {
+        // The call probe and the weather check are async; never let samples overlap.
+        guard !sampleInFlight else { return }
+        sampleInFlight = true
 
         Task { @MainActor in
-            let blocking = await CallDetector.isBlocking()
-            if blocking {
-                // Hold the pending fire without advancing the rotation.
-                // The call watcher will pick the exercise once the call clears.
-                callWatchPending = true
-                startCallWatcher()
-            } else {
+            defer { sampleInFlight = false }
+
+            let panelShowing = InterruptionPanelManager.shared.isShowing
+            // No need to probe for a call while a panel is already up.
+            let inCall = panelShowing ? false : await CallDetector.isBlocking()
+
+            let due = countdown.step(now: Date(),
+                                     idleSeconds: Self.idleSeconds(),
+                                     inCall: inCall,
+                                     panelShowing: panelShowing)
+            if due {
+                countdown.restart(remaining: Self.randomInterval())
+            }
+            publish()
+
+            if due {
                 InterruptionPanelManager.shared.show(exercise: await nextExercise())
             }
         }
-        scheduleNext()
     }
 
-    // Polls every 30 s; once the camera/screen-share clears, waits 30 more seconds
-    // then fires the deferred exercise.
-    private func startCallWatcher() {
-        callWatchStarted = Date()
-        let t = DispatchSource.makeTimerSource(queue: .main)
-        t.schedule(deadline: .now() + 30, repeating: 30)
-        t.setEventHandler { [weak self] in
-            Task { @MainActor [weak self] in self?.checkCallCleared() }
-        }
-        t.resume()
-        callWatchTimer = t
+    private func publish() {
+        if status != countdown.status { status = countdown.status }
+        remaining = countdown.remaining
     }
 
-    private func checkCallCleared() {
-        Task { @MainActor in
-            if let started = callWatchStarted, Date().timeIntervalSince(started) > maxCallHold {
-                endCallWatch()
-                return
-            }
-
-            guard !(await CallDetector.isBlocking()) else { return }
-
-            // Looks clear — wait out a 30 s buffer, then re-check before firing.
-            // The watcher and the pending flag stay in place across the buffer so a
-            // call rejoined during it keeps the panel suppressed, and so the regular
-            // timer can't slip a second panel through in the meantime.
-            try? await Task.sleep(nanoseconds: 30_000_000_000)
-
-            guard !(await CallDetector.isBlocking()) else { return }
-
-            endCallWatch()
-            InterruptionPanelManager.shared.show(exercise: await nextExercise())
-        }
+    private static func idleSeconds() -> TimeInterval {
+        [CGEventType.mouseMoved, .keyDown, .leftMouseDown, .scrollWheel]
+            .map { CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: $0) }
+            .min() ?? 0
     }
 
-    private func endCallWatch() {
-        callWatchTimer?.cancel()
-        callWatchTimer = nil
-        callWatchPending = false
-        callWatchStarted = nil
-    }
+    // MARK: Exercise selection
 
     private func nextExercise() async -> Exercise {
         let walkPending = (walkDeferred || isWalkOwedToday()) && !isWalkDoneToday()
