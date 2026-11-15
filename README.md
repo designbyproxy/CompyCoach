@@ -30,6 +30,6 @@ The app bundle lands at `./build/export/CompyCoach.app`.
 ## How it works
 
 - **Trigger**: a randomized 45–75 minute timer fires when you haven't been idle for more than 5 minutes. It uses the system uptime clock, so sleep time doesn't count — after waking your Mac, the full interval resets.
-- **Exercises**: Squats, Push-ups, Stand & Stretch, 20-20-20 Eye Relax, Walk. Walk is capped once per day. Exercises rotate in order.
-- **Adaptive targets**: after each completed exercise, the app looks at your hit rate over the past 7 days. ≥80% hit → target increases ~10%. ≤50% hit → target decreases ~10%. Floors: Squats 5, Push-ups 4, Stand/Stretch 20 sec.
+- **Exercises**: Squats, Push-ups, Stand & Stretch, Sit-ups, 20-20-20 Eye Relax, Walk. Walk is capped once per day. Exercises rotate in order.
+- **Adaptive targets**: after each completed exercise, the app looks at your hit rate over the past 7 days. ≥80% hit → target increases ~10%. ≤50% hit → target decreases ~10%. Sit-ups start at 12. Floors: Squats 5, Push-ups 4, Sit-ups 5, Stand/Stretch 20 sec.
 - **Data**: stored in `~/Library/Application Support/CompyCoach/`. `log.json` is append-only NDJSON. `targets.json` holds current targets.

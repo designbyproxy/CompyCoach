@@ -4,12 +4,13 @@ import CoreGraphics
 // MARK: - Exercise model
 
 enum Exercise {
-    case squats, pushups, standStretch, eyeRelax, walk
+    case squats, pushups, situps, standStretch, eyeRelax, walk
 
     var displayName: String {
         switch self {
         case .squats:       return "SQUATS"
         case .pushups:      return "PUSH-UPS"
+        case .situps:       return "SIT-UPS"
         case .standStretch: return "STAND & STRETCH"
         case .eyeRelax:     return "20–20–20"
         case .walk:         return "WALK"
@@ -21,6 +22,7 @@ enum Exercise {
         switch self {
         case .squats:       return "10"
         case .pushups:      return "8"
+        case .situps:       return "12"
         case .standStretch: return "45"
         case .eyeRelax:     return "20"
         case .walk:         return ""
@@ -31,6 +33,7 @@ enum Exercise {
         switch self {
         case .squats:       return "REPS"
         case .pushups:      return "REPS"
+        case .situps:       return "REPS"
         case .standStretch: return "SECONDS"
         case .eyeRelax:     return "SECONDS"
         case .walk:         return ""
@@ -41,6 +44,7 @@ enum Exercise {
         switch self {
         case .squats:       return "squats"
         case .pushups:      return "pushups"
+        case .situps:       return "situps"
         case .standStretch: return "standStretch"
         case .eyeRelax:     return "eyeRelax"
         case .walk:         return "walk"
@@ -50,7 +54,7 @@ enum Exercise {
     // If true, the panel asks "how many did you do?" with a text field.
     var requiresRepInput: Bool {
         switch self {
-        case .squats, .pushups: return true
+        case .squats, .pushups, .situps: return true
         default:                return false
         }
     }
@@ -103,8 +107,8 @@ final class TriggerEngine: ObservableObject {
     // a missed nudge is cheap, a takeover mid-meeting is not.
     private let maxCallHold: TimeInterval = 3 * 60 * 60
 
-    // Walk sits at the end so it fires roughly every 5 cycles.
-    private let rotation: [Exercise] = [.squats, .pushups, .standStretch, .eyeRelax, .walk]
+    // Walk sits at the end so it fires roughly every 6 cycles.
+    private let rotation: [Exercise] = [.squats, .pushups, .standStretch, .situps, .eyeRelax, .walk]
 
     private init() {}
 

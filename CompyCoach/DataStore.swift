@@ -25,6 +25,7 @@ final class DataStore: ObservableObject {
     static let defaultTargets: [String: Int] = [
         "squats":       10,
         "pushups":      8,
+        "situps":       12,
         "standStretch": 45,
         "eyeRelax":     20,
         "walk":         1
@@ -33,6 +34,7 @@ final class DataStore: ObservableObject {
     static let minimumTargets: [String: Int] = [
         "squats":       5,
         "pushups":      4,
+        "situps":       5,
         "standStretch": 20,
         "eyeRelax":     20,
         "walk":         1

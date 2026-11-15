@@ -48,6 +48,7 @@ private struct MenuBarContent: View {
         Text("Current Targets")
         Text("Squats · \(target("squats")) reps")
         Text("Push-ups · \(target("pushups")) reps")
+        Text("Sit-ups · \(target("situps")) reps")
         Text("Stand/Stretch · \(target("standStretch")) sec")
 
         Divider()
@@ -91,6 +92,9 @@ private struct MenuBarContent: View {
         Divider()
         Button("Trigger Panel") {
             InterruptionPanelManager.shared.show(exercise: .squats)
+        }
+        Button("Trigger Sit-ups") {
+            InterruptionPanelManager.shared.show(exercise: .situps)
         }
         Button("Trigger Stretch") {
             InterruptionPanelManager.shared.show(exercise: .standStretch)
