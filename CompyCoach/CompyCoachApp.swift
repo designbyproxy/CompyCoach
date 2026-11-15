@@ -28,11 +28,13 @@ struct CompyCoachApp: App {
 private struct MenuBarContent: View {
     @ObservedObject private var store: DataStore
     @ObservedObject private var engine: TriggerEngine
+    @ObservedObject private var weather: WeatherService
     @State private var launchAtLogin: Bool
 
     init() {
         store = DataStore.shared
         engine = TriggerEngine.shared
+        weather = WeatherService.shared
         _launchAtLogin = State(initialValue: SMAppService.mainApp.status == .enabled
                                           || SMAppService.mainApp.status == .requiresApproval)
     }
@@ -50,6 +52,16 @@ private struct MenuBarContent: View {
         Text("Push-ups · \(target("pushups")) reps")
         Text("Sit-ups · \(target("situps")) reps")
         Text("Stand/Stretch · \(target("standStretch")) sec")
+
+        Divider()
+
+        // Weather — decides whether walks are suggested
+        Text(weatherLine)
+            .onAppear { Task { _ = await WeatherService.shared.currentReading() } }
+        Button(weather.homeZIP == nil ? "Set Home ZIP for Walk Weather…" : "Change Home ZIP…") {
+            // Let the menu finish closing before putting up a modal dialog.
+            DispatchQueue.main.async { HomeZIPPrompt.run() }
+        }
 
         Divider()
 
@@ -102,6 +114,13 @@ private struct MenuBarContent: View {
         Button("Trigger Walk") {
             InterruptionPanelManager.shared.show(exercise: .walk)
         }
+        Button("Trigger Walk (weather-gated)") {
+            Task { @MainActor in
+                let ok = await WeatherService.shared.isWalkWeatherOK()
+                print("Walk weather OK: \(ok) — \(WeatherService.shared.lastReading?.summary ?? "no reading")")
+                InterruptionPanelManager.shared.show(exercise: ok ? .walk : .standStretch)
+            }
+        }
         Button("Seed Test Data") {
             DataStore.shared.seedTestData()
         }
@@ -117,6 +136,13 @@ private struct MenuBarContent: View {
         return "Today: \(hit)/\(today.count) hit"
     }
 
+    private var weatherLine: String {
+        guard let zip = weather.homeZIP else { return "Walk weather: no home ZIP set" }
+        let place = weather.homePlaceName.map { "\($0) (\(zip))" } ?? zip
+        guard let r = weather.lastReading else { return "Home: \(place)" }
+        return "\(place): \(r.summary) — \(r.isWalkable ? "walks on" : "no walks")"
+    }
+
     private func target(_ key: String) -> Int {
         store.targets[key] ?? DataStore.defaultTargets[key] ?? 0
     }
@@ -125,5 +151,44 @@ private struct MenuBarContent: View {
         let secs = engine.nextFireDate.timeIntervalSince(now)
         guard secs > 60 else { return "Next: <1m" }
         return "Next: \(Int(secs / 60))m"
+    }
+}
+
+// MARK: - Home ZIP prompt
+
+@MainActor
+enum HomeZIPPrompt {
+    static func run() {
+        let alert = NSAlert()
+        alert.messageText = "Home ZIP for Walk Weather"
+        alert.informativeText = "CompyCoach skips walks when it's below \(Int(WeatherService.minWalkTempF))°F or precipitating at home. "
+            + "Your ZIP is stored only on this Mac. Leave blank to turn the weather check off."
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
+        field.stringValue = WeatherService.shared.homeZIP ?? ""
+        field.placeholderString = "ZIP / postal code"
+        alert.accessoryView = field
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+
+        if #available(macOS 14.0, *) {
+            NSApp.activate()
+        } else {
+            NSApp.activate(ignoringOtherApps: true)
+        }
+        alert.window.initialFirstResponder = field
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        let zip = field.stringValue
+
+        Task { @MainActor in
+            do {
+                try await WeatherService.shared.setHomeZIP(zip)
+            } catch {
+                let err = NSAlert()
+                err.messageText = "Couldn't set home ZIP"
+                err.informativeText = error.localizedDescription
+                err.runModal()
+            }
+        }
     }
 }

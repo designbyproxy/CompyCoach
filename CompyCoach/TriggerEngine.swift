@@ -93,6 +93,10 @@ final class TriggerEngine: ObservableObject {
     // resurface on the next interruption instead of waiting a full rotation.
     private var walkDeferred = false
 
+    // Set when the walk's turn came up but the weather was too cold or wet.
+    // The walk is offered again on later nudges today once conditions improve.
+    private var walkOwedDate: Date?
+
     // Call-guard state: when a timer fires while the camera or screen sharing
     // is active, we hold off without advancing the rotation.  A poll timer
     // checks every 30 s; once the session clears we wait another 30 s and fire.
@@ -194,7 +198,7 @@ final class TriggerEngine: ObservableObject {
                 callWatchPending = true
                 startCallWatcher()
             } else {
-                InterruptionPanelManager.shared.show(exercise: nextExercise())
+                InterruptionPanelManager.shared.show(exercise: await nextExercise())
             }
         }
         scheduleNext()
@@ -231,7 +235,7 @@ final class TriggerEngine: ObservableObject {
             guard !(await CallDetector.isBlocking()) else { return }
 
             endCallWatch()
-            InterruptionPanelManager.shared.show(exercise: nextExercise())
+            InterruptionPanelManager.shared.show(exercise: await nextExercise())
         }
     }
 
@@ -242,23 +246,44 @@ final class TriggerEngine: ObservableObject {
         callWatchStarted = nil
     }
 
-    private func nextExercise() -> Exercise {
-        // A walk that was skipped-for-now resurfaces here, ahead of the rotation.
-        if walkDeferred && !isWalkDoneToday() {
-            walkDeferred = false
-            return .walk
+    private func nextExercise() async -> Exercise {
+        let walkPending = (walkDeferred || isWalkOwedToday()) && !isWalkDoneToday()
+
+        // A walk that was skipped-for-now, or bumped by bad weather earlier today,
+        // resurfaces ahead of the rotation as soon as the weather allows it.
+        var walkBlockedByWeather = false
+        if walkPending {
+            if await WeatherService.shared.isWalkWeatherOK() {
+                walkDeferred = false
+                walkOwedDate = nil
+                return .walk
+            }
+            walkBlockedByWeather = true
         }
 
-        var exercise = rotation[rotationIndex % rotation.count]
-        rotationIndex += 1
-
-        // Don't repeat the walk once it's actually been completed today.
-        if case .walk = exercise, isWalkDoneToday() {
-            exercise = rotation[rotationIndex % rotation.count]
+        // Rotation has at most one walk slot, so this finds a non-walk exercise
+        // within two steps.
+        while true {
+            let exercise = rotation[rotationIndex % rotation.count]
             rotationIndex += 1
-        }
 
-        return exercise
+            guard case .walk = exercise else { return exercise }
+
+            // Don't repeat the walk once it's actually been completed today.
+            if isWalkDoneToday() { continue }
+
+            // Too cold or wet: substitute the next exercise, but keep the walk owed
+            // so it comes back once conditions improve.
+            if walkBlockedByWeather { continue }
+            if await WeatherService.shared.isWalkWeatherOK() { return .walk }
+            walkOwedDate = Date()
+            continue
+        }
+    }
+
+    private func isWalkOwedToday() -> Bool {
+        guard let d = walkOwedDate else { return false }
+        return Calendar.current.isDateInToday(d)
     }
 
     // The walk is "done" only once a walk has been confirmed (logged) today —
