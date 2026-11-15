@@ -29,7 +29,11 @@ final class InterruptionPanelManager {
         let screen = NSScreen.main ?? NSScreen.screens[0]
         let p = InterruptionNSPanel(
             contentRect: NSRect(origin: .zero, size: screen.frame.size),
-            styleMask: [.borderless],
+            // .nonactivatingPanel lets the panel become the key window — and so take
+            // keyboard input — even when macOS (14+) declines to activate the app.
+            // Without it the reps field looks focused but keystrokes still go to
+            // whatever app was frontmost. Must be set at init, not afterwards.
+            styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
@@ -64,6 +68,7 @@ final class InterruptionPanelManager {
             NSApp.activate(ignoringOtherApps: true)
         }
         p.makeKeyAndOrderFront(nil)
+        p.makeKey()
     }
 
     func dismiss() {
@@ -214,6 +219,13 @@ struct InterruptionView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                 inputFocused = true
             }
+        }
+        // Re-focus the reps field whenever the panel becomes key — covers the panel
+        // turning key after onAppear, and clicking back onto it.
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { note in
+            guard exercise.requiresRepInput,
+                  (note.object as? NSWindow)?.level == .screenSaver else { return }
+            inputFocused = true
         }
         .onReceive(timer) { _ in
             guard isTimed, secondsRemaining > 0 else { return }
