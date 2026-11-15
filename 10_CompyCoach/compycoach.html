@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CompyCoach — Experiment 10 — Design by Proxy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;700;900&family=Fira+Mono:wght@400;500&family=Fira+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #1A1A1A;
+    --surface-2: #222222;
+    --cream: #F5F0E8;
+    --cream-dim: #C8C2B4;
+    --red: #8B1A1A;
+    --red-bright: #A82020;
+    --rule: rgba(245,240,232,0.1);
+    --font-display: 'Big Shoulders Display', sans-serif;
+    --font-mono: 'Fira Mono', monospace;
+    --font-body: 'Fira Sans', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--cream);
+    font-family: var(--font-body);
+    font-weight: 300;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── GRAIN OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.4;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 48px;
+    border-bottom: 1px solid var(--rule);
+    background: rgba(10,10,10,0.85);
+    backdrop-filter: blur(12px);
+  }
+
+  .nav-mark {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+    text-decoration: none;
+  }
+
+  .nav-exp {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--red-bright);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 0 48px 80px;
+    position: relative;
+    overflow: hidden;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .hero-number {
+    position: absolute;
+    top: 50%;
+    right: -0.05em;
+    transform: translateY(-50%);
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: clamp(280px, 35vw, 480px);
+    line-height: 1;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(245,240,232,0.06);
+    pointer-events: none;
+    user-select: none;
+    letter-spacing: -0.04em;
+  }
+
+  .hero-tag {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--red-bright);
+    margin-bottom: 24px;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.2s forwards;
+  }
+
+  .hero-title {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: clamp(72px, 10vw, 140px);
+    line-height: 0.9;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    color: var(--cream);
+    max-width: 800px;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.35s forwards;
+  }
+
+  .hero-title span {
+    color: var(--red-bright);
+  }
+
+  .hero-sub {
+    margin-top: 32px;
+    font-size: 16px;
+    font-weight: 300;
+    color: var(--cream-dim);
+    max-width: 480px;
+    line-height: 1.7;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.5s forwards;
+  }
+
+  .hero-meta {
+    margin-top: 48px;
+    display: flex;
+    gap: 40px;
+    opacity: 0;
+    animation: fadeUp 0.6s ease 0.65s forwards;
+  }
+
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .meta-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+    opacity: 0.6;
+  }
+
+  .meta-value {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--cream);
+  }
+
+  /* ── SECTIONS ── */
+  .section {
+    padding: 100px 48px;
+    border-bottom: 1px solid var(--rule);
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .section-full {
+    padding: 100px 48px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--red-bright);
+    margin-bottom: 48px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    max-width: 60px;
+    height: 1px;
+    background: var(--red);
+  }
+
+  .section-title {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: clamp(42px, 5vw, 72px);
+    line-height: 0.95;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    color: var(--cream);
+    margin-bottom: 40px;
+  }
+
+  .body-text {
+    font-size: 16px;
+    font-weight: 300;
+    color: var(--cream-dim);
+    line-height: 1.8;
+    max-width: 640px;
+  }
+
+  .body-text + .body-text {
+    margin-top: 20px;
+  }
+
+  /* ── WHY SECTION ── */
+  .why-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--rule);
+    margin-top: 64px;
+    border: 1px solid var(--rule);
+  }
+
+  .why-card {
+    background: var(--bg);
+    padding: 48px 40px;
+    position: relative;
+  }
+
+  .why-card:hover {
+    background: var(--surface);
+  }
+
+  .why-number {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 64px;
+    line-height: 1;
+    color: var(--red);
+    opacity: 0.4;
+    margin-bottom: 16px;
+  }
+
+  .why-heading {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 22px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--cream);
+    margin-bottom: 12px;
+  }
+
+  .why-body {
+    font-size: 14px;
+    font-weight: 300;
+    color: var(--cream-dim);
+    line-height: 1.7;
+  }
+
+  /* ── SCREENSHOT PLACEHOLDER ── */
+  .screenshot-block {
+    margin: 64px 0;
+    position: relative;
+  }
+
+  .screenshot-placeholder {
+    width: 100%;
+    aspect-ratio: 16/10;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .screenshot-placeholder::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 20px,
+      rgba(245,240,232,0.02) 20px,
+      rgba(245,240,232,0.02) 21px
+    );
+  }
+
+  .placeholder-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+    opacity: 0.4;
+    position: relative;
+  }
+
+  .placeholder-desc {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--cream-dim);
+    opacity: 0.25;
+    position: relative;
+  }
+
+  .screenshot-caption {
+    margin-top: 16px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--cream-dim);
+    opacity: 0.5;
+    letter-spacing: 0.06em;
+  }
+
+  /* ── SYSTEM BREAKDOWN ── */
+  .systems-list {
+    margin-top: 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .system-row {
+    display: grid;
+    grid-template-columns: 200px 1fr 200px;
+    gap: 48px;
+    align-items: start;
+    padding: 40px 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  .system-row:last-child {
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .system-name {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 18px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--cream);
+    padding-top: 4px;
+  }
+
+  .system-desc {
+    font-size: 14px;
+    font-weight: 300;
+    color: var(--cream-dim);
+    line-height: 1.7;
+  }
+
+  .system-tech {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--red-bright);
+    line-height: 1.8;
+    text-align: right;
+  }
+
+  /* ── PROGRESSION CALLOUT ── */
+  .callout {
+    margin: 64px 0;
+    padding: 48px;
+    background: var(--surface);
+    border-left: 3px solid var(--red);
+    position: relative;
+  }
+
+  .callout-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--red-bright);
+    margin-bottom: 20px;
+  }
+
+  .callout-text {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(22px, 2.5vw, 32px);
+    line-height: 1.2;
+    color: var(--cream);
+    text-transform: uppercase;
+  }
+
+  /* ── PROGRESSION TABLE ── */
+  .prog-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 48px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  .prog-table th {
+    text-align: left;
+    padding: 12px 20px;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+    opacity: 0.5;
+    border-bottom: 1px solid var(--rule);
+    font-weight: 400;
+  }
+
+  .prog-table td {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--rule);
+    color: var(--cream-dim);
+    vertical-align: top;
+  }
+
+  .prog-table tr:hover td {
+    background: var(--surface);
+    color: var(--cream);
+  }
+
+  .prog-table .up { color: #4a9e6b; }
+  .prog-table .down { color: var(--red-bright); }
+  .prog-table .hold { color: var(--cream-dim); opacity: 0.5; }
+
+  /* ── SCREENSHOT FULL WIDTH ── */
+  .screenshot-full {
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: var(--surface);
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .screenshot-full::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 30px,
+      rgba(245,240,232,0.015) 30px,
+      rgba(245,240,232,0.015) 31px
+    );
+  }
+
+  /* ── LEARNINGS ── */
+  .learnings-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    margin-top: 64px;
+  }
+
+  .learning-card {
+    background: var(--bg);
+    padding: 40px 32px;
+    transition: background 0.2s;
+  }
+
+  .learning-card:hover {
+    background: var(--surface);
+  }
+
+  .learning-icon {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--red-bright);
+    margin-bottom: 20px;
+  }
+
+  .learning-text {
+    font-size: 14px;
+    font-weight: 300;
+    color: var(--cream-dim);
+    line-height: 1.7;
+  }
+
+  .learning-text strong {
+    color: var(--cream);
+    font-weight: 500;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    padding: 60px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .footer-mark {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+    opacity: 0.4;
+  }
+
+  .footer-link {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+    opacity: 0.4;
+    text-decoration: none;
+    transition: opacity 0.2s;
+  }
+
+  .footer-link:hover { opacity: 1; color: var(--red-bright); }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* ── FINDER WINDOW ── */
+  .finder-window {
+    position: absolute;
+    top: 50%;
+    right: 80px;
+    transform: translateY(-54%);
+    width: clamp(320px, 28vw, 440px);
+    opacity: 0;
+    animation: fadeUp 0.8s cubic-bezier(0.2,0.7,0.1,1) 0.8s forwards;
+    pointer-events: none;
+    user-select: none;
+    filter: drop-shadow(0 40px 80px rgba(0,0,0,0.7));
+  }
+
+  @media (max-width: 1100px) {
+    .finder-window { display: none; }
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    nav { padding: 16px 24px; }
+    .hero { padding: 0 24px 60px; }
+    .section, .section-full { padding: 60px 24px; }
+    .why-grid { grid-template-columns: 1fr; }
+    .system-row { grid-template-columns: 1fr; gap: 16px; }
+    .system-tech { text-align: left; }
+    .learnings-grid { grid-template-columns: 1fr; }
+    footer { flex-direction: column; gap: 20px; padding: 40px 24px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-mark" href="https://designbyproxy.com">Design by Proxy</a>
+  <span class="nav-exp">Experiment 10</span>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <!-- Finder Applications window -->
+  <div class="finder-window">
+    <svg viewBox="0 0 440 320" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;">
+      <defs>
+        <!-- Window background -->
+        <linearGradient id="winBg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#2a2a2a"/>
+          <stop offset="100%" stop-color="#222222"/>
+        </linearGradient>
+        <!-- Sidebar gradient -->
+        <linearGradient id="sidebarBg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#232323"/>
+          <stop offset="100%" stop-color="#1e1e1e"/>
+        </linearGradient>
+        <!-- Title bar gradient -->
+        <linearGradient id="titleBg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#323232"/>
+          <stop offset="100%" stop-color="#2a2a2a"/>
+        </linearGradient>
+        <!-- App icon gradient — red/dark -->
+        <linearGradient id="iconBg" x1="0" y1="0" x2="0.6" y2="1">
+          <stop offset="0%" stop-color="#1a1a1a"/>
+          <stop offset="100%" stop-color="#0d0d0d"/>
+        </linearGradient>
+        <linearGradient id="iconAccent" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#8B1A1A"/>
+          <stop offset="100%" stop-color="#5a0e0e"/>
+        </linearGradient>
+        <!-- Highlight on selected icon -->
+        <linearGradient id="selectedBg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="rgba(139,26,26,0.25)"/>
+          <stop offset="100%" stop-color="rgba(139,26,26,0.12)"/>
+        </linearGradient>
+        <!-- macOS window corner radius clip -->
+        <clipPath id="windowClip">
+          <rect x="0" y="0" width="440" height="320" rx="10" ry="10"/>
+        </clipPath>
+        <clipPath id="iconClip">
+          <rect x="0" y="0" width="64" height="64" rx="14" ry="14"/>
+        </clipPath>
+      </defs>
+
+      <!-- Window shell -->
+      <g clip-path="url(#windowClip)">
+        <!-- Window body -->
+        <rect width="440" height="320" fill="url(#winBg)"/>
+
+        <!-- Title bar -->
+        <rect width="440" height="38" fill="url(#titleBg)"/>
+        <!-- Title bar bottom border -->
+        <line x1="0" y1="38" x2="440" y2="38" stroke="rgba(0,0,0,0.4)" stroke-width="1"/>
+
+        <!-- Traffic lights -->
+        <circle cx="18" cy="19" r="6" fill="#FF5F57"/>
+        <circle cx="36" cy="19" r="6" fill="#FFBD2E"/>
+        <circle cx="54" cy="19" r="6" fill="#28C840"/>
+
+        <!-- Window title -->
+        <text x="220" y="24" text-anchor="middle" dominant-baseline="middle"
+              font-family="'Fira Sans', -apple-system, sans-serif"
+              font-size="12" font-weight="500" fill="rgba(245,240,232,0.7)"
+              letter-spacing="0.01em">Applications</text>
+
+        <!-- Sidebar -->
+        <rect x="0" y="38" width="116" height="282" fill="url(#sidebarBg)"/>
+        <!-- Sidebar right border -->
+        <line x1="116" y1="38" x2="116" y2="320" stroke="rgba(0,0,0,0.35)" stroke-width="1"/>
+
+        <!-- Sidebar items — Favorites header -->
+        <text x="12" y="60" font-family="'Fira Mono', monospace" font-size="9" font-weight="500"
+              fill="rgba(245,240,232,0.25)" letter-spacing="0.1em" text-transform="uppercase">FAVORITES</text>
+
+        <!-- Sidebar item: Applications (active) -->
+        <rect x="4" y="66" width="108" height="22" rx="4" fill="rgba(139,26,26,0.35)"/>
+        <!-- Folder icon (tiny) -->
+        <rect x="12" y="70" width="12" height="10" rx="1" fill="rgba(139,26,26,0.7)"/>
+        <rect x="12" y="68" width="6" height="4" rx="1" fill="rgba(139,26,26,0.7)"/>
+        <text x="30" y="80" font-family="'Fira Sans', sans-serif" font-size="11" font-weight="400"
+              fill="rgba(245,240,232,0.9)">Applications</text>
+
+        <!-- Sidebar item: Desktop -->
+        <rect x="12" y="69" width="0" height="0"/>
+        <rect x="12" y="94" width="12" height="10" rx="1" fill="rgba(245,240,232,0.2)"/>
+        <text x="30" y="103" font-family="'Fira Sans', sans-serif" font-size="11" font-weight="400"
+              fill="rgba(245,240,232,0.4)">Desktop</text>
+
+        <!-- Sidebar item: Downloads -->
+        <rect x="12" y="114" width="12" height="10" rx="1" fill="rgba(245,240,232,0.2)"/>
+        <text x="30" y="123" font-family="'Fira Sans', sans-serif" font-size="11" font-weight="400"
+              fill="rgba(245,240,232,0.4)">Downloads</text>
+
+        <!-- Sidebar item: Documents -->
+        <rect x="12" y="134" width="12" height="10" rx="1" fill="rgba(245,240,232,0.2)"/>
+        <text x="30" y="143" font-family="'Fira Sans', sans-serif" font-size="11" font-weight="400"
+              fill="rgba(245,240,232,0.4)">Documents</text>
+
+        <!-- Locations header -->
+        <text x="12" y="172" font-family="'Fira Mono', monospace" font-size="9" font-weight="500"
+              fill="rgba(245,240,232,0.25)" letter-spacing="0.1em">LOCATIONS</text>
+        <text x="30" y="191" font-family="'Fira Sans', sans-serif" font-size="11" font-weight="400"
+              fill="rgba(245,240,232,0.4)">Macintosh HD</text>
+        <text x="30" y="211" font-family="'Fira Sans', sans-serif" font-size="11" font-weight="400"
+              fill="rgba(245,240,232,0.4)">Network</text>
+
+        <!-- Main content area -->
+        <!-- Toolbar area under title bar -->
+        <rect x="116" y="38" width="324" height="34" fill="rgba(40,40,40,0.6)"/>
+        <line x1="116" y1="72" x2="440" y2="72" stroke="rgba(0,0,0,0.3)" stroke-width="1"/>
+
+        <!-- View mode icons (right of toolbar) -->
+        <rect x="360" y="46" width="18" height="18" rx="3" fill="rgba(245,240,232,0.08)"/>
+        <rect x="382" y="46" width="18" height="18" rx="3" fill="rgba(245,240,232,0.04)"/>
+        <rect x="404" y="46" width="18" height="18" rx="3" fill="rgba(245,240,232,0.04)"/>
+
+        <!-- App grid: 4 columns, 2 rows -->
+        <!-- Row 1 -->
+
+        <!-- App 1: Safari (dim) -->
+        <g transform="translate(130, 85)">
+          <rect width="56" height="56" rx="12" fill="rgba(245,240,232,0.04)"/>
+          <text x="28" y="34" text-anchor="middle" font-size="24">🌐</text>
+          <text x="28" y="74" text-anchor="middle" font-family="'Fira Sans',sans-serif"
+                font-size="9" fill="rgba(245,240,232,0.25)">Safari</text>
+        </g>
+
+        <!-- App 2: Finder (dim) -->
+        <g transform="translate(204, 85)">
+          <rect width="56" height="56" rx="12" fill="rgba(245,240,232,0.04)"/>
+          <text x="28" y="34" text-anchor="middle" font-size="24">🗂</text>
+          <text x="28" y="74" text-anchor="middle" font-family="'Fira Sans',sans-serif"
+                font-size="9" fill="rgba(245,240,232,0.25)">Finder</text>
+        </g>
+
+        <!-- App 3: CompyCoach — SELECTED / HIGHLIGHTED -->
+        <g transform="translate(278, 82)">
+          <!-- Selection highlight -->
+          <rect x="-8" y="-6" width="76" height="92" rx="8" fill="url(#selectedBg)" stroke="rgba(139,26,26,0.4)" stroke-width="1"/>
+          <!-- Icon body -->
+          <g clip-path="url(#iconClip)">
+            <rect width="64" height="64" rx="14" fill="url(#iconBg)"/>
+            <!-- Red circuit / pulse shape -->
+            <rect x="0" y="0" width="64" height="64" fill="url(#iconAccent)" opacity="0.15"/>
+            <!-- Stylised "C" mark -->
+            <text x="32" y="42" text-anchor="middle" dominant-baseline="middle"
+                  font-family="'Big Shoulders Display', sans-serif"
+                  font-size="36" font-weight="900" fill="#8B1A1A" opacity="0.25"
+                  letter-spacing="-0.04em">C</text>
+            <!-- Red dumbbell icon (simplified) -->
+            <!-- Bar -->
+            <rect x="14" y="30" width="36" height="5" rx="2.5" fill="#A82020"/>
+            <!-- Left weight plates -->
+            <rect x="10" y="22" width="7" height="21" rx="3" fill="#8B1A1A"/>
+            <rect x="6" y="25" width="5" height="15" rx="2.5" fill="#6a1414"/>
+            <!-- Right weight plates -->
+            <rect x="47" y="22" width="7" height="21" rx="3" fill="#8B1A1A"/>
+            <rect x="53" y="25" width="5" height="15" rx="2.5" fill="#6a1414"/>
+            <!-- Gloss -->
+            <rect x="0" y="0" width="64" height="22" rx="14" fill="rgba(255,255,255,0.05)"/>
+          </g>
+          <!-- App name -->
+          <text x="32" y="76" text-anchor="middle" font-family="'Fira Sans',sans-serif"
+                font-size="9" font-weight="500" fill="rgba(245,240,232,0.85)">CompyCoach</text>
+        </g>
+
+        <!-- App 4: Xcode (dim) -->
+        <g transform="translate(358, 85)">
+          <rect width="56" height="56" rx="12" fill="rgba(245,240,232,0.04)"/>
+          <text x="28" y="34" text-anchor="middle" font-size="24">🔨</text>
+          <text x="28" y="74" text-anchor="middle" font-family="'Fira Sans',sans-serif"
+                font-size="9" fill="rgba(245,240,232,0.25)">Xcode</text>
+        </g>
+
+        <!-- Row 2 (partial, dim) -->
+        <g transform="translate(130, 185)">
+          <rect width="56" height="56" rx="12" fill="rgba(245,240,232,0.03)"/>
+          <text x="28" y="34" text-anchor="middle" font-size="24" opacity="0.4">📸</text>
+          <text x="28" y="74" text-anchor="middle" font-family="'Fira Sans',sans-serif"
+                font-size="9" fill="rgba(245,240,232,0.15)">Photos</text>
+        </g>
+        <g transform="translate(204, 185)">
+          <rect width="56" height="56" rx="12" fill="rgba(245,240,232,0.03)"/>
+          <text x="28" y="34" text-anchor="middle" font-size="24" opacity="0.4">🎵</text>
+          <text x="28" y="74" text-anchor="middle" font-family="'Fira Sans',sans-serif"
+                font-size="9" fill="rgba(245,240,232,0.15)">Music</text>
+        </g>
+        <g transform="translate(278, 185)">
+          <rect width="56" height="56" rx="12" fill="rgba(245,240,232,0.03)"/>
+          <text x="28" y="34" text-anchor="middle" font-size="24" opacity="0.4">📝</text>
+          <text x="28" y="74" text-anchor="middle" font-family="'Fira Sans',sans-serif"
+                font-size="9" fill="rgba(245,240,232,0.15)">Notes</text>
+        </g>
+        <g transform="translate(358, 185)">
+          <rect width="56" height="56" rx="12" fill="rgba(245,240,232,0.03)"/>
+          <text x="28" y="34" text-anchor="middle" font-size="24" opacity="0.4">⚙️</text>
+          <text x="28" y="74" text-anchor="middle" font-family="'Fira Sans',sans-serif"
+                font-size="9" fill="rgba(245,240,232,0.15)">Settings</text>
+        </g>
+
+        <!-- Status bar at bottom -->
+        <rect x="116" y="295" width="324" height="25" fill="rgba(30,30,30,0.8)"/>
+        <line x1="116" y1="295" x2="440" y2="295" stroke="rgba(0,0,0,0.3)" stroke-width="1"/>
+        <text x="278" y="308" text-anchor="middle" font-family="'Fira Mono', monospace"
+              font-size="9" fill="rgba(245,240,232,0.3)" letter-spacing="0.04em">CompyCoach · 2.4 MB</text>
+
+        <!-- Window outer border -->
+        <rect width="440" height="320" rx="10" ry="10"
+              fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="hero-number">10</div>
+  <div class="hero-tag">Experiment 10 · macOS Utility · 2025</div>
+  <h1 class="hero-title">Compy<span>Coach</span></h1>
+  <p class="hero-sub">A fitness interruption app that lives in your menu bar, covers your screen, and gets harder the better you do.</p>
+  <div class="hero-meta">
+    <div class="meta-item">
+      <span class="meta-label">Stack</span>
+      <span class="meta-value">Swift · SwiftUI · AppKit</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Platform</span>
+      <span class="meta-value">macOS 13+</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Distribution</span>
+      <span class="meta-value">Local · Unsigned</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Status</span>
+      <span class="meta-value">Running daily</span>
+    </div>
+  </div>
+</section>
+
+<!-- WHY -->
+<div class="section-full">
+<div style="max-width:1200px;margin:0 auto;">
+  <div class="section-label reveal">Why this exists</div>
+  <h2 class="section-title reveal">The problem<br>with reminders</h2>
+  <p class="body-text reveal">Most fitness reminder apps are polite. They send a notification you dismiss without reading. They're easy to ignore, so you ignore them.</p>
+  <p class="body-text reveal">CompyCoach is not polite. It covers your screen, tells you exactly what to do and how many reps, and won't go away until you log what you actually did. And if you keep hitting your targets, it raises them.</p>
+
+  <div class="why-grid">
+    <div class="why-card reveal">
+      <div class="why-number">01</div>
+      <div class="why-heading">Interruption, not suggestion</div>
+      <p class="why-body">It covers your entire screen, above every other window including the menu bar. You can force-quit in a genuine emergency. Otherwise, you're doing the squats.</p>
+    </div>
+    <div class="why-card reveal">
+      <div class="why-number">02</div>
+      <div class="why-heading">Randomized, not clockwork</div>
+      <p class="why-body">Fires roughly every hour with up to 15 minutes of random offset either way. Predictable timers get gamed. If you don't know exactly when it's coming, you can't plan around it.</p>
+    </div>
+    <div class="why-card reveal">
+      <div class="why-number">03</div>
+      <div class="why-heading">Idle-aware</div>
+      <p class="why-body">Before firing, it checks whether you've actually been at your desk. Mouse and keyboard untouched for 5+ minutes? It skips and reschedules. It won't interrupt an empty room.</p>
+    </div>
+    <div class="why-card reveal">
+      <div class="why-number">04</div>
+      <div class="why-heading">Adaptive targets</div>
+      <p class="why-body">Hitting your targets most days? The number goes up. Struggling? It backs off. Always slightly harder than comfortable. Never punishing, never coasting.</p>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- SCREENSHOT: INTERRUPTION PANEL -->
+<div class="screenshot-full reveal">
+  <span class="placeholder-label">Screenshot placeholder</span>
+  <span class="placeholder-desc">Full-screen interruption panel · Squats challenge · DBP branding</span>
+</div>
+
+<!-- HOW IT WORKS -->
+<div class="section-full">
+<div style="max-width:1200px;margin:0 auto;">
+  <div class="section-label reveal">How it works</div>
+  <h2 class="section-title reveal">Four things<br>working together</h2>
+  <p class="body-text reveal">I'd never opened Xcode before this. Here's how the pieces fit together.</p>
+
+  <div class="systems-list">
+    <div class="system-row reveal">
+      <div class="system-name">The Clock</div>
+      <div class="system-desc">A background timer counts down to the next challenge. Before firing, it checks how long since you moved the mouse or hit a key. Idle 5+ minutes? It skips and reschedules. When you close the laptop and reopen it, a naive timer would fire immediately on wake. So on wake, the clock resets to a fresh interval from that moment.</div>
+      <div class="system-tech">Randomized · Idle-aware<br>Sleep/wake handled</div>
+    </div>
+    <div class="system-row reveal">
+      <div class="system-name">The Panel</div>
+      <div class="system-desc">The trickiest part. Menu bar apps normally only show a small dropdown. Getting a window above everything, including the menu bar itself, required borrowing a technique macOS uses for screensavers. The obvious approach doesn't work. This one does.</div>
+      <div class="system-tech">Full-screen takeover<br>Above all other windows</div>
+    </div>
+    <div class="system-row reveal">
+      <div class="system-name">The Log</div>
+      <div class="system-desc">Every confirmed challenge writes to a file on disk. Each entry gets added to the end rather than rewriting the whole file. If the app crashes mid-write, at most one entry is lost. Your history stays intact.</div>
+      <div class="system-tech">Append-only log<br>Survives app restarts</div>
+    </div>
+    <div class="system-row reveal">
+      <div class="system-name">The Progression</div>
+      <div class="system-desc">After every challenge, the app looks back at the last 7 days for that exercise. Hitting your target most of the time? The number goes up. Consistently missing? It drops. Somewhere in between? It holds. Always slightly ahead of where you are.</div>
+      <div class="system-tech">7-day rolling window<br>Adapts up or down</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- SCREENSHOT: MENU DROPDOWN -->
+<div style="max-width:1200px;margin:0 auto;padding:0 48px;">
+  <div class="screenshot-block reveal">
+    <div class="screenshot-placeholder" style="aspect-ratio:4/3;max-width:400px;">
+      <span class="placeholder-label">Screenshot placeholder</span>
+      <span class="placeholder-desc">Menu bar dropdown · targets + countdown</span>
+    </div>
+    <p class="screenshot-caption">Menu dropdown showing today's hit rate, current adaptive targets, and next trigger countdown.</p>
+  </div>
+</div>
+
+<!-- PROGRESSION LOGIC -->
+<div class="section-full">
+<div style="max-width:1200px;margin:0 auto;">
+  <div class="section-label reveal">Progression logic</div>
+  <h2 class="section-title reveal">The math</h2>
+  <p class="body-text reveal">Targets adapt weekly based on your 7-day hit rate per exercise. The goal is a system that's always slightly ahead of where you are — not punishing, not coasting.</p>
+
+  <div class="callout reveal">
+    <div class="callout-label">Core rule</div>
+    <div class="callout-text">Hit ≥80% → up 10% · Hit ≤50% → down 10% · Between → hold</div>
+  </div>
+
+  <table class="prog-table reveal">
+    <thead>
+      <tr>
+        <th>Exercise</th>
+        <th>Starting target</th>
+        <th>Floor</th>
+        <th>At 85% hit rate</th>
+        <th>At 43% hit rate</th>
+        <th>Adaptive</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Squats</td>
+        <td>10 reps</td>
+        <td>5 reps</td>
+        <td class="up">↑ 11 reps</td>
+        <td class="down">↓ 9 reps</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>Push-ups</td>
+        <td>8 reps</td>
+        <td>4 reps</td>
+        <td class="up">↑ 9 reps</td>
+        <td class="down">↓ 7 reps</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>Stand / Stretch</td>
+        <td>45 sec</td>
+        <td>20 sec</td>
+        <td class="up">↑ 50 sec</td>
+        <td class="down">↓ 41 sec</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>20-20-20 Look Away</td>
+        <td>20 sec</td>
+        <td>—</td>
+        <td class="hold">— fixed</td>
+        <td class="hold">— fixed</td>
+        <td>No</td>
+      </tr>
+      <tr>
+        <td>Walk</td>
+        <td>Once daily</td>
+        <td>—</td>
+        <td class="hold">— fixed</td>
+        <td class="hold">— fixed</td>
+        <td>No</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+</div>
+
+<!-- WHAT I LEARNED -->
+<div class="section-full">
+<div style="max-width:1200px;margin:0 auto;">
+  <div class="section-label reveal">Build notes</div>
+  <h2 class="section-title reveal">First time<br>in Xcode</h2>
+  <p class="body-text reveal">I've never built a native Mac app. Most of what I learned had nothing to do with fitness.</p>
+
+  <div class="learnings-grid">
+    <div class="learning-card reveal">
+      <div class="learning-icon">The obvious approach didn't work</div>
+      <p class="learning-text">Menu bar apps are limited to a small dropdown by default. Getting a window above everything, including the menu bar itself, required a technique borrowed from how macOS handles screensavers. First instinct was wrong. Second instinct worked.</p>
+    </div>
+    <div class="learning-card reveal">
+      <div class="learning-icon">Laptops sleep</div>
+      <p class="learning-text">Close the lid, open it an hour later, and a naive timer would think no time had passed. The fix: listen for the Mac waking up and reset the clock from that moment. Obvious in hindsight.</p>
+    </div>
+    <div class="learning-card reveal">
+      <div class="learning-icon">Write carefully</div>
+      <p class="learning-text">Each log entry gets added to the end of the file, never rewriting the whole thing. If the app crashes mid-write, you lose at most one entry. The AI made this call without me asking. Right call.</p>
+    </div>
+    <div class="learning-card reveal">
+      <div class="learning-icon">Permissions are a maze</div>
+      <p class="learning-text">macOS has Full Disk Access, Files and Folders, and per-app toggles. "Claude" the app and "claude" the CLI are different entries that each need their own access. Stuck here longer than I'd like to admit.</p>
+    </div>
+    <div class="learning-card reveal">
+      <div class="learning-icon">AI as build partner</div>
+      <p class="learning-text">Claude Code wrote every line of Swift. I planned the architecture, reviewed each task, and made decisions at checkpoints. I still understand what was built and why. That feels like the right way to work in a language you don't know yet.</p>
+    </div>
+    <div class="learning-card reveal">
+      <div class="learning-icon">It actually works</div>
+      <p class="learning-text">Running daily since I shipped it. Squats are already up from 10 to 11. The interruption is genuinely annoying in the right way. Turns out building the tool yourself makes you more likely to use it.</p>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- SCREENSHOT: 20-20-20 PANEL -->
+<div style="max-width:1200px;margin:0 auto;padding:0 48px 100px;">
+  <div class="screenshot-block reveal">
+    <div class="screenshot-placeholder">
+      <span class="placeholder-label">Screenshot placeholder</span>
+      <span class="placeholder-desc">20-20-20 countdown variant · timer at mid-count</span>
+    </div>
+    <p class="screenshot-caption">The 20-20-20 look-away variant counts down live. Button stays disabled until zero — then you confirm and the log entry writes.</p>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <span class="footer-mark">Design by Proxy · Experiment 10</span>
+  <a class="footer-link" href="https://experiments.designbyproxy.com">← All experiments</a>
+</footer>
+
+<script>
+  // Reveal on scroll
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), i * 60);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+  reveals.forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>
