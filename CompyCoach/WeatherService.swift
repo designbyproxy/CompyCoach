@@ -14,15 +14,19 @@ import Foundation
 final class WeatherService: ObservableObject {
     static let shared = WeatherService()
 
-    // No walk below this temperature (°F) or while it's precipitating.
+    // No walk when it feels colder than this (°F), while it's precipitating, or when
+    // rain is this likely (%) in the next hour.
     nonisolated static let minWalkTempF: Double = 45
+    nonisolated static let maxRainChancePct: Int = 40
 
     // Weather is re-fetched at most this often.
     private let cacheLifetime: TimeInterval = 30 * 60
 
     struct Reading {
         let temperatureF: Double
+        let feelsLikeF: Double
         let precipitationMM: Double
+        let rainChanceNextHourPct: Int
         let weatherCode: Int
         let fetchedAt: Date
 
@@ -30,12 +34,17 @@ final class WeatherService: ObservableObject {
             precipitationMM > 0 || WeatherService.wetCodes.contains(weatherCode)
         }
 
+        var isRainLikely: Bool {
+            rainChanceNextHourPct >= WeatherService.maxRainChancePct
+        }
+
         var isWalkable: Bool {
-            temperatureF >= WeatherService.minWalkTempF && !isWet
+            feelsLikeF >= WeatherService.minWalkTempF && !isWet && !isRainLikely
         }
 
         var summary: String {
-            "\(Int(temperatureF.rounded()))°F, \(WeatherService.describe(weatherCode))"
+            "feels \(Int(feelsLikeF.rounded()))°F, \(WeatherService.describe(weatherCode)), "
+                + "\(rainChanceNextHourPct)% rain"
         }
     }
 
@@ -140,25 +149,38 @@ final class WeatherService: ObservableObject {
         comps.queryItems = [
             URLQueryItem(name: "latitude", value: String(lat)),
             URLQueryItem(name: "longitude", value: String(lon)),
-            URLQueryItem(name: "current", value: "temperature_2m,precipitation,weather_code"),
+            URLQueryItem(name: "current", value: "temperature_2m,apparent_temperature,precipitation,weather_code"),
+            // The current hour's slot plus the next one, so "next hour" is covered
+            // wherever we are within the current hour.
+            URLQueryItem(name: "hourly", value: "precipitation_probability"),
+            URLQueryItem(name: "forecast_hours", value: "2"),
             URLQueryItem(name: "temperature_unit", value: "fahrenheit"),
         ]
 
         struct ForecastResponse: Decodable {
             struct Current: Decodable {
                 let temperature_2m: Double
+                let apparent_temperature: Double
                 let precipitation: Double
                 let weather_code: Int
             }
+            struct Hourly: Decodable {
+                let precipitation_probability: [Int?]
+            }
             let current: Current
+            let hourly: Hourly?
         }
 
         guard let data = try? await fetch(comps.url!),
-              let c = try? JSONDecoder().decode(ForecastResponse.self, from: data).current else {
+              let forecast = try? JSONDecoder().decode(ForecastResponse.self, from: data) else {
             return nil
         }
+        let c = forecast.current
+        let rainChance = forecast.hourly?.precipitation_probability.compactMap { $0 }.max() ?? 0
         let reading = Reading(temperatureF: c.temperature_2m,
+                              feelsLikeF: c.apparent_temperature,
                               precipitationMM: c.precipitation,
+                              rainChanceNextHourPct: rainChance,
                               weatherCode: c.weather_code,
                               fetchedAt: Date())
         lastReading = reading

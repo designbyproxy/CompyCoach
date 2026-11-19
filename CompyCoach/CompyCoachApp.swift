@@ -163,7 +163,8 @@ enum HomeZIPPrompt {
     static func run() {
         let alert = NSAlert()
         alert.messageText = "Home ZIP for Walk Weather"
-        alert.informativeText = "CompyCoach skips walks when it's below \(Int(WeatherService.minWalkTempF))°F or precipitating at home. "
+        alert.informativeText = "CompyCoach skips walks when it feels colder than \(Int(WeatherService.minWalkTempF))°F, it's precipitating, "
+            + "or there's a \(WeatherService.maxRainChancePct)%+ chance of rain in the next hour at home. "
             + "Your ZIP is stored only on this Mac. Leave blank to turn the weather check off."
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
         field.stringValue = WeatherService.shared.homeZIP ?? ""
