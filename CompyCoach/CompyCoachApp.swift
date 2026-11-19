@@ -30,6 +30,7 @@ private struct MenuBarContent: View {
     @ObservedObject private var engine: TriggerEngine
     @ObservedObject private var weather: WeatherService
     @State private var launchAtLogin: Bool
+    @AppStorage(HeadsUpController.defaultsKey) private var headsUp = false
 
     init() {
         store = DataStore.shared
@@ -82,6 +83,9 @@ private struct MenuBarContent: View {
                 launchAtLogin = status == .enabled || status == .requiresApproval
             }
 
+        // Optional 10-second warning chip before a nudge takes over the screen (off by default)
+        Toggle("10-Second Heads-Up", isOn: $headsUp)
+
         Divider()
 
         // Countdown of active time — freezes during calls, away time, and sleep
@@ -92,6 +96,13 @@ private struct MenuBarContent: View {
         Button("Skip Next") {
             DataStore.shared.logSkip()
             TriggerEngine.shared.skipNext()
+        }
+
+        Divider()
+
+        Button("About CompyCoach") {
+            // Let the menu finish closing before bringing a window forward.
+            DispatchQueue.main.async { AboutWindowController.shared.show() }
         }
 
         Button("Quit CompyCoach") {
@@ -111,6 +122,14 @@ private struct MenuBarContent: View {
         }
         Button("Trigger Walk") {
             InterruptionPanelManager.shared.show(exercise: .walk)
+        }
+        Button("Trigger Eye Relax") {
+            InterruptionPanelManager.shared.show(exercise: .eyeRelax)
+        }
+        Button("Trigger Heads-Up → Squats") {
+            HeadsUpController.shared.show(for: .squats) {
+                InterruptionPanelManager.shared.show(exercise: .squats)
+            }
         }
         Button("Trigger Walk (weather-gated)") {
             Task { @MainActor in

@@ -17,26 +17,31 @@ enum Exercise {
         }
     }
 
-    // Large number shown in the panel; empty means no quantity shown.
-    var quantityText: String {
+    // Takeover copy: a lead-in line, the hero (target number or a word), and a stacked companion.
+    // The walk's companion is the weather, filled in by the panel.
+    var leadIn: String {
         switch self {
-        case .squats:       return "10"
-        case .pushups:      return "8"
-        case .situps:       return "12"
-        case .standStretch: return "45"
-        case .eyeRelax:     return "20"
-        case .walk:         return ""
+        case .squats, .pushups, .situps: return displayName
+        case .standStretch:              return "Stand up and stretch for"
+        case .eyeRelax:                  return "Look at something"
+        case .walk:                      return "Time to go for a"
         }
     }
 
-    var unitText: String {
+    func hero(target: Int) -> String {
         switch self {
-        case .squats:       return "REPS"
-        case .pushups:      return "REPS"
-        case .situps:       return "REPS"
-        case .standStretch: return "SECONDS"
-        case .eyeRelax:     return "SECONDS"
-        case .walk:         return ""
+        case .eyeRelax: return "20"
+        case .walk:     return "Walk"
+        default:        return String(target)
+        }
+    }
+
+    var companion: [String] {
+        switch self {
+        case .squats, .pushups, .situps: return ["Reps"]
+        case .standStretch:              return ["Seconds"]
+        case .eyeRelax:                  return ["Feet", "away"]
+        case .walk:                      return []
         }
     }
 
@@ -66,15 +71,6 @@ enum Exercise {
         default:                       return false
         }
     }
-
-    // Button label shown while a timed exercise is still counting down.
-    var inProgressLabel: String {
-        switch self {
-        case .standStretch: return "STRETCHING..."
-        case .eyeRelax:     return "LOOKING AWAY..."
-        default:            return ""
-        }
-    }
 }
 
 // MARK: - Trigger engine
@@ -95,7 +91,7 @@ final class TriggerEngine: ObservableObject {
     private var sampleInFlight = false
     private var rotationIndex = 0
 
-    // Set when the user taps "Skip for now" on a walk — forces the walk to
+    // Set when the user taps "I can't right now" on a walk — forces the walk to
     // resurface on the next interruption instead of waiting a full rotation.
     private var walkDeferred = false
 
@@ -133,7 +129,7 @@ final class TriggerEngine: ObservableObject {
         publish()
     }
 
-    /// Called when the user taps "Skip for now" on a walk. Logs a skip and
+    /// Called when the user taps "I can't right now" on a walk. Logs a skip and
     /// arranges for the walk to come back on the next interruption.
     func deferWalk() {
         walkDeferred = true
@@ -150,7 +146,8 @@ final class TriggerEngine: ObservableObject {
         Task { @MainActor in
             defer { sampleInFlight = false }
 
-            let panelShowing = InterruptionPanelManager.shared.isShowing
+            // A heads-up chip counting down counts as showing: the nudge is already on its way.
+            let panelShowing = InterruptionPanelManager.shared.isShowing || HeadsUpController.shared.isShowing
             // No need to probe for a call while a panel is already up.
             let inCall = panelShowing ? false : await CallDetector.isBlocking()
 
@@ -164,7 +161,14 @@ final class TriggerEngine: ObservableObject {
             publish()
 
             if due {
-                InterruptionPanelManager.shared.show(exercise: await nextExercise())
+                let exercise = await nextExercise()
+                if HeadsUpController.shared.isEnabled {
+                    HeadsUpController.shared.show(for: exercise) {
+                        InterruptionPanelManager.shared.show(exercise: exercise)
+                    }
+                } else {
+                    InterruptionPanelManager.shared.show(exercise: exercise)
+                }
             }
         }
     }

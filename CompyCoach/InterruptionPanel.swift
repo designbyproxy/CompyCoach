@@ -21,6 +21,8 @@ final class InterruptionPanelManager {
 
     var isShowing: Bool { panel != nil }
 
+    private var reduceMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+
     func show(exercise: Exercise) {
         guard panel == nil else { return }
 
@@ -38,8 +40,9 @@ final class InterruptionPanelManager {
             defer: false
         )
         p.level = .screenSaver
-        p.isOpaque = true
-        p.backgroundColor = NSColor(red: 26/255, green: 26/255, blue: 26/255, alpha: 1)
+        p.isOpaque = false  // so the panel can fade up over the desktop
+        p.backgroundColor = DBP.nsGround
+        p.alphaValue = 0
         p.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         p.isMovable = false
         p.hidesOnDeactivate = false
@@ -49,12 +52,15 @@ final class InterruptionPanelManager {
             self?.dismiss()
         }
 
-        let onSkipForNow: () -> Void = { [weak self] in
+        let onNotNow: () -> Void = { [weak self] in
             TriggerEngine.shared.deferWalk()
             self?.dismiss()
         }
 
-        let controller = NSHostingController(rootView: InterruptionView(exercise: exercise, target: target, onConfirm: onConfirm, onSkipForNow: onSkipForNow))
+        let view = InterruptionView(exercise: exercise, target: target,
+                                    weather: WeatherService.shared.lastReading,
+                                    onConfirm: onConfirm, onNotNow: onNotNow)
+        let controller = NSHostingController(rootView: view)
         p.contentViewController = controller
         // Set frame after contentViewController so AppKit can't resize the window
         // down to the SwiftUI view's ideal size before the frame is applied.
@@ -69,13 +75,58 @@ final class InterruptionPanelManager {
         }
         p.makeKeyAndOrderFront(nil)
         p.makeKey()
+
+        // Fade up over the desktop instead of cutting to black.
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = reduceMotion ? 0.15 : 0.74
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            p.animator().alphaValue = 1
+        }
     }
 
     func dismiss() {
-        panel?.orderOut(nil)
-        panel = nil
-        hostingController = nil
+        guard let p = panel else { return }
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = reduceMotion ? 0.15 : 0.45
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            p.animator().alphaValue = 0
+        }, completionHandler: { [weak self] in
+            Task { @MainActor in
+                p.orderOut(nil)
+                if self?.panel === p {
+                    self?.panel = nil
+                    self?.hostingController = nil
+                }
+            }
+        })
     }
+}
+
+// MARK: - Grid
+
+/// The takeover's 12-column grid, sized from a 1440 × 900 reference: 96pt margins, 24pt gutters,
+/// a 72pt lead size and a 389pt hero, all scaled to the screen.
+struct TakeoverMetrics {
+    let unit: CGFloat
+    let width: CGFloat
+
+    init(size: CGSize) {
+        unit = min(size.width / 1440, size.height / 900)
+        width = size.width
+    }
+
+    var margin: CGFloat { 96 * unit }
+    var gutter: CGFloat { 24 * unit }
+    var column: CGFloat { (width - 2 * margin - 11 * gutter) / 12 }
+    func span(_ n: Int) -> CGFloat { column * CGFloat(n) + gutter * CGFloat(n - 1) }
+
+    var lead: CGFloat { 72 * unit }           // lead-in, companion, question
+    var entry: CGFloat { lead * 1.6 }        // the typed count
+    var hero: CGFloat { 389 * unit }
+    var buttonHeight: CGFloat { 64 * unit }
+    var buttonFont: CGFloat { 24 * unit }
+    var band: CGFloat { margin }              // timer band lives in the bottom margin
+    var label: CGFloat { 18 * unit }
 }
 
 // MARK: - SwiftUI view
@@ -83,142 +134,37 @@ final class InterruptionPanelManager {
 struct InterruptionView: View {
     let exercise: Exercise
     let target: Int
+    let weather: WeatherService.Reading?
     let onConfirm: (_ logged: Int?) -> Void
-    let onSkipForNow: () -> Void
+    let onNotNow: () -> Void
 
+    @State private var appeared = false
     @State private var inputText = ""
     @FocusState private var inputFocused: Bool
-    @State private var secondsRemaining: Int
-
-    // Fires every second; drives the countdown for timed exercises, ignored otherwise.
-    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-
-    private let bg    = Color(red: 26/255,  green: 26/255,  blue: 26/255)
-    private let cream = Color(red: 245/255, green: 240/255, blue: 232/255)
-    private let red   = Color(red: 139/255, green: 26/255,  blue: 26/255)  // #8B1A1A
-
-    init(exercise: Exercise, target: Int, onConfirm: @escaping (_ logged: Int?) -> Void, onSkipForNow: @escaping () -> Void) {
-        self.exercise = exercise
-        self.target = target
-        self.onConfirm = onConfirm
-        self.onSkipForNow = onSkipForNow
-        _secondsRemaining = State(initialValue: target)
-    }
-
-    // MARK: Helpers
-
-    private var isTimed: Bool { exercise.isTimed }
-
-    private var isWalk: Bool {
-        if case .walk = exercise { return true }
-        return false
-    }
-
-    private var valid: Bool {
-        if exercise.requiresRepInput { return Int(inputText) != nil }
-        if isTimed { return secondsRemaining == 0 }
-        return true
-    }
-
-    // Large number: remaining seconds for timed exercises, target reps otherwise.
-    private var displayNumber: String {
-        isTimed ? String(secondsRemaining) : String(target)
-    }
-
-    private var buttonLabel: String {
-        guard isTimed else { return "CONFIRM" }
-        return secondsRemaining == 0 ? "DONE" : exercise.inProgressLabel
-    }
-
-    // Fraction of time elapsed (0 → 1) for the progress bar.
-    private var countdownProgress: Double {
-        Double(target - secondsRemaining) / Double(max(target, 1))
-    }
-
-    // MARK: Body
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        ZStack {
-            bg.ignoresSafeArea()
+        GeometryReader { geo in
+            let m = TakeoverMetrics(size: geo.size)
+            ZStack(alignment: .bottomLeading) {
+                DBP.ground
 
-            VStack(spacing: 0) {
-                Spacer()
+                composition(m)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                    .padding(m.margin)
 
-                VStack(spacing: 12) {
-                    Text(exercise.displayName)
-                        .font(.custom("Big Shoulders", size: 72))
-                        .tracking(10)
-                        .foregroundStyle(cream)
-
-                    if !exercise.quantityText.isEmpty {
-                        Text(displayNumber)
-                            .font(.custom("Big Shoulders", size: 160))
-                            .foregroundStyle(cream)
-                            .monospacedDigit()
-
-                        Text(exercise.unitText)
-                            .font(.custom("FiraSans-Regular", size: 18))
-                            .tracking(6)
-                            .foregroundStyle(cream.opacity(0.45))
-                    }
+                if exercise.isTimed {
+                    TimerBand(seconds: target, metrics: m) { onConfirm(target) }
+                        .reveal(appeared, delay: 0.7, reduceMotion: reduceMotion)
                 }
-
-                Spacer()
-
-                VStack(spacing: 28) {
-                    if exercise.requiresRepInput {
-                        Text("How many did you do?")
-                            .font(.custom("FiraSans-Regular", size: 17))
-                            .foregroundStyle(cream.opacity(0.6))
-
-                        TextField("0", text: $inputText)
-                            .font(.custom("FiraMono-Regular", size: 80))
-                            .foregroundStyle(cream)
-                            .multilineTextAlignment(.center)
-                            .textFieldStyle(.plain)
-                            .frame(width: 240)
-                            .focused($inputFocused)
-                            .onSubmit { if valid { confirm() } }
-                    } else if isTimed {
-                        progressBar
-                    }
-
-                    Button(action: confirm) {
-                        Text(buttonLabel)
-                            .font(.custom("FiraSans-Regular", size: 17))
-                            .tracking(3)
-                            .foregroundStyle(cream)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 56)
-                            .background(valid ? red : red.opacity(0.35))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(!valid)
-
-                    if isWalk {
-                        Button(action: onSkipForNow) {
-                            Text("SKIP FOR NOW")
-                                .font(.custom("FiraSans-Regular", size: 14))
-                                .tracking(3)
-                                .foregroundStyle(cream.opacity(0.55))
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 44)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .frame(maxWidth: 440)
-
-                Spacer().frame(height: 72)
             }
-            .padding(.horizontal, 80)
         }
+        .ignoresSafeArea()
         .onExitCommand {}
         .onAppear {
+            appeared = true
             guard exercise.requiresRepInput else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                inputFocused = true
-            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { inputFocused = true }
         }
         // Re-focus the reps field whenever the panel becomes key — covers the panel
         // turning key after onAppear, and clicking back onto it.
@@ -227,39 +173,225 @@ struct InterruptionView: View {
                   (note.object as? NSWindow)?.level == .screenSaver else { return }
             inputFocused = true
         }
-        .onReceive(timer) { _ in
-            guard isTimed, secondsRemaining > 0 else { return }
-            secondsRemaining -= 1
-        }
     }
 
-    // MARK: Progress bar (timed exercises only)
+    // MARK: Compositions
 
-    private var progressBar: some View {
-        ZStack(alignment: .leading) {
-            RoundedRectangle(cornerRadius: 3)
-                .fill(red.opacity(0.25))
-                .frame(height: 6)
-            GeometryReader { geo in
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(red)
-                    .frame(width: max(0, geo.size.width * countdownProgress), height: 6)
-            }
-            .frame(height: 6)
-        }
-    }
-
-    // MARK: Confirm
-
-    private func confirm() {
-        let logged: Int?
+    @ViewBuilder
+    private func composition(_ m: TakeoverMetrics) -> some View {
         if exercise.requiresRepInput {
-            logged = Int(inputText)
-        } else if isTimed {
-            logged = target  // full duration held; hit = (target >= target) = true
+            repsSplit(m)
+        } else if case .walk = exercise {
+            VStack(alignment: .leading, spacing: m.lead * 0.45) {
+                leadIn(m)
+                heroRow(m)
+                HStack(spacing: m.gutter) {
+                    Button("Confirm") { onConfirm(nil) }
+                        .buttonStyle(DBPPrimaryButtonStyle(height: m.buttonHeight, fontSize: m.buttonFont))
+                        .keyboardShortcut(.defaultAction)
+                        .frame(width: m.span(4))
+                    Button("I can't right now", action: onNotNow)
+                        .buttonStyle(DBPOutlineButtonStyle(height: m.buttonHeight, fontSize: m.buttonFont))
+                        .frame(width: m.span(4))
+                }
+                .padding(.top, m.lead * 0.4)
+                .reveal(appeared, delay: 1.0, reduceMotion: reduceMotion)
+            }
         } else {
-            logged = nil
+            VStack(alignment: .leading, spacing: m.lead * 0.45) {
+                leadIn(m)
+                heroRow(m)
+            }
         }
-        onConfirm(logged)
+    }
+
+    /// Reps: lead-in and hero on columns 1–6; the question, count and CONFIRM on columns 7–12.
+    /// The question's top lines up with the lead-in and CONFIRM's bottom with the hero's baseline.
+    private func repsSplit(_ m: TakeoverMetrics) -> some View {
+        HStack(alignment: .top, spacing: m.gutter) {
+            VStack(alignment: .leading, spacing: m.lead * 0.45) {
+                leadIn(m)
+                heroRow(m)
+            }
+            .frame(width: m.span(6), alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: m.lead * 0.22) {
+                    CapText(text: "How many", size: m.lead)
+                    CapText(text: "did you do?", size: m.lead)
+                }
+                Spacer(minLength: m.gutter)
+                VStack(alignment: .leading, spacing: m.gutter * 1.5) {
+                    repsEntry(m)
+                    Button("Confirm", action: confirmReps)
+                        .buttonStyle(DBPPrimaryButtonStyle(height: m.buttonHeight, fontSize: m.buttonFont))
+                        .disabled(Int(inputText) == nil)
+                }
+            }
+            .frame(width: m.span(6), alignment: .leading)
+            .frame(maxHeight: .infinity, alignment: .top)
+            .reveal(appeared, delay: 0.95, reduceMotion: reduceMotion)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func leadIn(_ m: TakeoverMetrics) -> some View {
+        CapText(text: exercise.leadIn, size: m.lead)
+            .reveal(appeared, delay: 0.22, reduceMotion: reduceMotion)
+    }
+
+    /// The extruded hero with its stacked companion, sitting on the hero's baseline.
+    private func heroRow(_ m: TakeoverMetrics) -> some View {
+        HStack(alignment: .bottom, spacing: m.gutter * 1.5) {
+            ExtrudedText(text: exercise.hero(target: target), size: m.hero)
+            let lines = companionLines
+            if !lines.isEmpty {
+                VStack(alignment: .leading, spacing: m.lead * 0.22) {
+                    ForEach(lines, id: \.self) { CapText(text: $0, size: m.lead) }
+                }
+                .reveal(appeared, delay: 0.8, reduceMotion: reduceMotion)
+            }
+        }
+    }
+
+    /// The walk's companion is the weather: feels-like temperature, then the conditions.
+    private var companionLines: [String] {
+        guard case .walk = exercise else { return exercise.companion }
+        guard let r = weather else { return [] }
+        var lines = ["\(Int(r.feelsLikeF.rounded()))°"]
+        var current = "and"
+        for word in WeatherService.describe(r.weatherCode).split(separator: " ") {
+            if current.count + 1 + word.count > 10 {
+                lines.append(current)
+                current = String(word)
+            } else {
+                current += " " + word
+            }
+        }
+        lines.append(current)
+        return lines
+    }
+
+    // MARK: Reps entry
+
+    private func repsEntry(_ m: TakeoverMetrics) -> some View {
+        let font = DBPFont.display(m.entry, weight: 700, tabular: true)
+        return ZStack(alignment: .leading) {
+            // macOS ignores styling on a TextField prompt, so the "0" placeholder is drawn underneath.
+            if inputText.isEmpty {
+                Text("0").font(font).foregroundStyle(DBP.inert).allowsHitTesting(false)
+            }
+            TextField("", text: $inputText)
+                .font(font)
+                .foregroundStyle(DBP.ink)
+                .tint(DBP.light)
+                .textFieldStyle(.plain)
+                .focused($inputFocused)
+                .onSubmit { if Int(inputText) != nil { confirmReps() } }
+                .onChange(of: inputText) { value in
+                    let digits = String(value.filter(\.isNumber).prefix(3))
+                    if digits != value { inputText = digits }
+                }
+        }
+        .padding(.bottom, m.unit * 8)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(inputFocused ? DBP.light : DBP.ruleHover)
+                .frame(height: 1)
+                .animation(DBP.press, value: inputFocused)
+        }
+    }
+
+    private func confirmReps() {
+        guard let n = Int(inputText) else { return }
+        onConfirm(n)
+    }
+}
+
+// MARK: - Timer band
+
+/// The clock for timed exercises, in the bottom margin. A thin cream line grows left to right while
+/// counting; at zero it drops open into the full band and CONFIRM arrives on it.
+private struct TimerBand: View {
+    let seconds: Int
+    let metrics: TakeoverMetrics
+    let onConfirm: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var start: Date?
+    @State private var done = false
+    @State private var opened = false
+    @State private var showButton = false
+
+    /// The count starts once the entrance has settled.
+    private static let startDelay = 1.5
+
+    var body: some View {
+        let m = metrics
+        TimelineView(.animation(paused: start == nil || done)) { timeline in
+            let progress = progress(at: timeline.date)
+            ZStack(alignment: .topLeading) {
+                Rectangle()
+                    .fill(DBP.ink)
+                    .scaleEffect(x: opened ? 1 : progress, y: opened ? 1 : 0.035, anchor: .topLeading)
+
+                Text(label(progress))
+                    .font(DBPFont.mono(m.label, medium: true))
+                    .tracking(m.label * 0.1)
+                    .textCase(.uppercase)
+                    .foregroundStyle(DBP.ink)
+                    .blendMode(.difference)  // light on the ground, dark once the band fills under it
+                    .frame(maxHeight: .infinity)
+                    .padding(.leading, m.margin)
+
+                HStack {
+                    Spacer()
+                    Button("Confirm", action: onConfirm)
+                        .buttonStyle(DBPOutlineButtonStyle(height: m.buttonHeight, fontSize: m.buttonFont, onLight: true))
+                        .keyboardShortcut(.defaultAction)
+                        .frame(width: m.span(3))
+                        .disabled(!showButton)
+                        .opacity(showButton ? 1 : 0)
+                        .offset(y: showButton || reduceMotion ? 0 : m.unit * 18)
+                        .animation(reduceMotion ? DBP.reducedMotion : DBP.settle, value: showButton)
+                }
+                .frame(maxHeight: .infinity)
+                .padding(.trailing, m.margin)
+            }
+            .compositingGroup()
+        }
+        .frame(height: m.band)
+        .frame(maxWidth: .infinity)
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.startDelay) { start = Date() }
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.startDelay + Double(seconds)) { finish() }
+        }
+    }
+
+    private func progress(at date: Date) -> CGFloat {
+        guard let start else { return 0 }
+        return CGFloat(min(1, max(0, date.timeIntervalSince(start) / Double(max(seconds, 1)))))
+    }
+
+    private func label(_ progress: CGFloat) -> String {
+        if done { return "Done" }
+        let left = Int((Double(seconds) * Double(1 - progress)).rounded(.up))
+        return left == 1 ? "1 second" : "\(left) seconds"
+    }
+
+    private func finish() {
+        done = true
+        withAnimation(reduceMotion ? DBP.reducedMotion : DBP.carry) { opened = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + (reduceMotion ? 0 : 0.35)) { showButton = true }
+    }
+}
+
+// MARK: - Reveal
+
+private extension View {
+    /// Supporting elements only fade in, so the hero's extrusion is the one moving moment.
+    func reveal(_ shown: Bool, delay: Double, reduceMotion: Bool) -> some View {
+        opacity(shown ? 1 : 0)
+            .animation(reduceMotion ? DBP.reducedMotion : DBP.carry.delay(delay), value: shown)
     }
 }

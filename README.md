@@ -30,6 +30,7 @@ The app bundle lands at `./build/export/CompyCoach.app`.
 ## How it works
 
 - **Trigger**: a randomized 45–75 minute countdown of *active* time. It freezes while you're on a call (camera, mic, or screen sharing), away (no input for 3 minutes — the idle stretch is refunded), asleep, or already looking at a nudge, then resumes where it left off. After any pause there are always at least 2 minutes before the next nudge. The menu shows the time left and why it's paused.
+- **Heads-up**: turn on "10-Second Heads-Up" in the menu to get a small countdown chip in the top-right corner before a nudge takes over the screen. Off by default.
 - **Exercises**: Squats, Push-ups, Stand & Stretch, Sit-ups, 20-20-20 Eye Relax, Walk. Walk is capped once per day. Exercises rotate in order.
 - **Walk weather**: set your home ZIP from the menu ("Set Home ZIP for Walk Weather…"). Walks are skipped when it feels colder than 45°F, it's precipitating, or there's a 40%+ chance of rain in the next hour, per [Open-Meteo](https://open-meteo.com) (free, no API key). A skipped walk comes back later that day once conditions improve. The ZIP is stored only in this Mac's user defaults; with no ZIP set, or if the weather can't be fetched, walks are always offered.
 - **Adaptive targets**: after each completed exercise, the app looks at your hit rate over the past 7 days. ≥80% hit → target increases ~10%. ≤50% hit → target decreases ~10%. Sit-ups start at 12. Floors: Squats 5, Push-ups 4, Sit-ups 5, Stand/Stretch 20 sec.
