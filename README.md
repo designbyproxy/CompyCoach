@@ -66,7 +66,7 @@ Click the icon in the menu bar to see:
 
 ## How targets change
 
-After every squat, push-up, or sit-up break, CompyCoach looks at your last 7 days of that exercise:
+After a squat, push-up, or sit-up break, CompyCoach looks at your last 7 days of that exercise and adjusts the target at most once a day:
 
 - Hit the target **80% of the time or more** and it goes up about 10% (always at least one rep).
 - Hit it **half the time or less** and it comes down about 10%.

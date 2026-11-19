@@ -132,10 +132,21 @@ final class DataStore: ObservableObject {
         writeEntry(entry)
 
         let key = exercise.logKey
-        if !DataStore.fixedExercises.contains(key) {
+        if !DataStore.fixedExercises.contains(key), !targetChangedToday(key) {
             recalculate(for: key)
             writeTargets()
         }
+    }
+
+    /// Targets move at most once a day, so a run of good breaks can't compound a 10% bump
+    /// several times over. The first entry logged today records the target the day started
+    /// with; if the current target differs, it has already moved today (or was reset by hand,
+    /// which also holds until tomorrow).
+    private func targetChangedToday(_ key: String) -> Bool {
+        guard let first = entries.first(where: {
+            $0.exercise == key && Calendar.current.isDateInToday($0.timestamp)
+        }) else { return false }
+        return first.target != (targets[key] ?? DataStore.defaultTargets[key] ?? 1)
     }
 
     // MARK: Private: recalculate(for:)
@@ -210,7 +221,14 @@ final class DataStore: ObservableObject {
     // MARK: DEBUG
 
     #if DEBUG
+    /// Checks the progression math against fake history, starting from default targets,
+    /// then puts the real entries and targets back so nothing fake is ever saved.
     func seedTestData() {
+        let savedEntries = entries, savedTargets = targets
+        defer { entries = savedEntries; targets = savedTargets }
+        targets = DataStore.defaultTargets
+        entries = []
+
         let now = Date()
         func daysAgo(_ n: Int) -> Date {
             now.addingTimeInterval(-Double(n) * 24 * 60 * 60)
@@ -240,8 +258,7 @@ final class DataStore: ObservableObject {
             synthetic.append(LogEntry(timestamp: daysAgo(i), exercise: "standStretch", target: 45, logged: nil, hit: false))
         }
 
-        // Inject into in-memory array only (no disk writes)
-        entries.append(contentsOf: synthetic)
+        entries = synthetic
 
         // Recalculate adaptive targets
         recalculate(for: "squats")
