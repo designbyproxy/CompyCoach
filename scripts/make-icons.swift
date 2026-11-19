@@ -20,8 +20,9 @@ guard let logo = NSImage(contentsOf: svgURL) else {
 let appBackground = NSColor(srgbRed: 13/255, green: 13/255, blue: 13/255, alpha: 1)  // #0D0D0D
 let appGlyphFraction: CGFloat = 0.74
 
-// Menu bar: template image (black + alpha; macOS tints it), glyph fills 40/44.
-let menuGlyphFraction: CGFloat = 40.0 / 44.0
+// Menu bar: template image (black + alpha; macOS tints it), glyph fills 36/44
+// (~82%) so it sits at the same optical weight as neighboring menu bar icons.
+let menuGlyphFraction: CGFloat = 36.0 / 44.0
 
 func render(px: Int, background: NSColor?, glyphFraction: CGFloat, tint: NSColor?) -> Data {
     let rep = NSBitmapImageRep(
