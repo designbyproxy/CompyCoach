@@ -4,3 +4,6 @@ DerivedData/
 xcuserdata/
 *.xcuserstate
 .claude/settings.local.json
+
+# Earlier design write-up, kept locally only
+10_CompyCoach/
