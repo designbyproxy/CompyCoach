@@ -54,7 +54,6 @@ private struct AboutView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Placeholder mark until the DBP logo lands.
             Image(nsImage: NSApp.applicationIconImage)
                 .resizable()
                 .interpolation(.high)
@@ -73,7 +72,7 @@ private struct AboutView: View {
                 .foregroundStyle(DBP.muted)
                 .padding(.top, 8)
 
-            Text("Exercise breaks that take over your screen and get harder as you keep up.")
+            Text("Sitting all day slowly folds you into the shape of your chair. CompyCoach gets you up every hour or so for a few squats, a stretch, or a walk, and asks for a little more as you get stronger.")
                 .font(DBPFont.body(15))
                 .foregroundStyle(DBP.text2)
                 .lineSpacing(3)
