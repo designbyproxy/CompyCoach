@@ -1,37 +1,113 @@
 # CompyCoach
 
-A macOS menu bar app that nudges you to move every 45–75 minutes. Squats, push-ups, standing stretches, 20-20-20 eye breaks, and short walks. Targets adapt automatically based on your hit rate over the past 7 days.
+![CompyCoach asking for 10 squats](docs/screenshots/squats.png)
+
+Sitting all day slowly folds you into the shape of your chair. CompyCoach lives in your Mac's menu bar and, every hour or so, takes over the screen with something small to do: a few squats, a stretch, a walk around the block. Do it, tap Confirm, and get back to work. Each time you keep up, it asks for a little more.
+
+**[Download CompyCoach for Mac](https://github.com/designbyproxy/CompyCoach/releases/latest/download/CompyCoach.dmg)** · Free · macOS 13 (Ventura) or later · Apple silicon and Intel
+
+## What a break looks like
+
+When a break comes due, CompyCoach fills your screen with one clear ask. There's no window to minimize and nothing to snooze, so the easiest way back to work is to do the thing.
+
+| | |
+|---|---|
+| ![Push-ups](docs/screenshots/pushups.png) | ![Sit-ups](docs/screenshots/situps.png) |
+| **Reps.** Squats, push-ups, and sit-ups ask how many you did. Type the number and press Return. | Your answer sets the next target. Hit it most of the week and the number climbs. Miss it and it eases off. |
+| ![Stand and stretch](docs/screenshots/stretch.png) | ![Eye break, finished](docs/screenshots/eyes.png) |
+| **Timed breaks.** A stretch or an eye break counts itself down along the bottom of the screen... | ...and Confirm shows up once the time's done. The eye break follows the 20-20-20 rule: every so often, look 20 feet away for 20 seconds. |
+
+![Time to go for a walk, 64° and clear](docs/screenshots/walk.png)
+
+**Walks.** Once a day it suggests a walk, with the weather at home alongside. Not a good moment? Tap "I can't right now" and it comes back later.
+
+## It picks its moments
+
+CompyCoach counts down active time at the keyboard, and the countdown sits still whenever interrupting you would be rude or pointless:
+
+- **On a call.** If another app is using your camera or microphone, or someone is screen sharing with you, it waits until you hang up.
+- **Away from your desk.** After 3 minutes without a keystroke or mouse move it pauses, and it doesn't count the time you were gone.
+- **Asleep.** Closing the lid pauses it too.
+
+After any pause you get at least 2 minutes back at your desk before a break can start, so it never pounces the second you sit down. Breaks land somewhere between 45 and 75 minutes apart.
+
+**Walks wait for decent weather.** Add your ZIP code from the menu and CompyCoach skips the walk when it feels colder than 45°F, when it's raining or snowing, or when rain looks likely in the next hour. It offers the walk again later that day once things clear up. Without a ZIP, walks are always on the table.
+
+**Want a warning first?** Turn on **10-Second Heads-Up** in the menu and a small countdown appears in the corner of your screen before each break.
 
 ## Install
 
-1. Copy `CompyCoach.app` from `build/export/` to your `/Applications` folder.
-2. **Right-click → Open** on the first launch to bypass Gatekeeper (the app is ad-hoc signed, not notarized).
-3. Click the figure icon in the menu bar to open the menu.
-4. Enable **Launch at Login** from the menu if you want it to start automatically on login.
+1. [Download CompyCoach.dmg](https://github.com/designbyproxy/CompyCoach/releases/latest/download/CompyCoach.dmg), open it, and drag **CompyCoach** into **Applications**.
+2. Open CompyCoach from your Applications folder. macOS will say it can't check the app for malicious software, because CompyCoach is a free side project without a paid Apple developer certificate. Click **Done**.
+3. Open **System Settings → Privacy & Security**, scroll down to the message about CompyCoach, and click **Open Anyway**. Confirm with your password or Touch ID.
 
-> **Note:** Launch at Login only registers successfully when the app is running from `/Applications` or `~/Applications`. It will silently fail if launched from Downloads or DerivedData.
+You only do this once. After that, CompyCoach opens like any other app. Look for its icon in the menu bar at the top right of your screen.
 
-## Build from source
+To have it start when you log in, choose **Launch at Login** from its menu. (This only works once the app is in your Applications folder.)
 
-Requires Xcode 15+ and macOS 13+.
+**Prefer Terminal?** This replaces steps 2 and 3:
 
 ```bash
-xcodebuild -scheme CompyCoach -configuration Release \
-    -archivePath ./build/CompyCoach.xcarchive archive
-
-xcodebuild -exportArchive \
-    -archivePath ./build/CompyCoach.xcarchive \
-    -exportPath ./build/export \
-    -exportOptionsPlist ExportOptions.plist
+xattr -dr com.apple.quarantine /Applications/CompyCoach.app
 ```
 
-The app bundle lands at `./build/export/CompyCoach.app`.
+## The menu
 
-## How it works
+Click the icon in the menu bar to see:
 
-- **Trigger**: a randomized 45–75 minute countdown of *active* time. It freezes while you're on a call (camera, mic, or screen sharing), away (no input for 3 minutes — the idle stretch is refunded), asleep, or already looking at a nudge, then resumes where it left off. After any pause there are always at least 2 minutes before the next nudge. The menu shows the time left and why it's paused.
-- **Heads-up**: turn on "10-Second Heads-Up" in the menu to get a small countdown chip in the top-right corner before a nudge takes over the screen. Off by default.
-- **Exercises**: Squats, Push-ups, Stand & Stretch, Sit-ups, 20-20-20 Eye Relax, Walk. Walk is capped once per day. Exercises rotate in order.
-- **Walk weather**: set your home ZIP from the menu ("Set Home ZIP for Walk Weather…"). Walks are skipped when it feels colder than 45°F, it's precipitating, or there's a 40%+ chance of rain in the next hour, per [Open-Meteo](https://open-meteo.com) (free, no API key). A skipped walk comes back later that day once conditions improve. The ZIP is stored only in this Mac's user defaults; with no ZIP set, or if the weather can't be fetched, walks are always offered.
-- **Adaptive targets**: after each completed exercise, the app looks at your hit rate over the past 7 days. ≥80% hit → target increases ~10%. ≤50% hit → target decreases ~10%. Sit-ups start at 12. Floors: Squats 5, Push-ups 4, Sit-ups 5, Stand/Stretch 20 sec.
-- **Data**: stored in `~/Library/Application Support/CompyCoach/`. `log.json` is append-only NDJSON. `targets.json` holds current targets.
+<img src="docs/screenshots/menu.png" alt="The CompyCoach menu" width="460">
+
+- **Today's tally** and your **current targets**
+- **Next:** how long until the next break, or why it's paused
+- **Set Home ZIP for Walk Weather…**
+- **Launch at Login** and **10-Second Heads-Up**
+- **Skip Next** to push the next break back a full interval
+- **About CompyCoach** and **Quit**
+
+## How targets change
+
+After every squat, push-up, or sit-up break, CompyCoach looks at your last 7 days of that exercise:
+
+- Hit the target **80% of the time or more** and it goes up about 10% (always at least one rep).
+- Hit it **half the time or less** and it comes down about 10%.
+- Anywhere in between, it stays put.
+
+Starting targets are 10 squats, 8 push-ups, and 12 sit-ups. Targets never drop below 5 squats, 4 push-ups, or 5 sit-ups. Stretches stay at 45 seconds and eye breaks at 20.
+
+## Privacy
+
+CompyCoach has no account, no analytics, and no tracking. Your log and targets stay on your Mac in `~/Library/Application Support/CompyCoach/`.
+
+The app only goes online for walk weather, and only if you add a ZIP code. It sends the ZIP to [Open-Meteo](https://open-meteo.com) once to look up your coordinates, then sends those coordinates to check the forecast, at most every 30 minutes.
+
+Call detection runs entirely on your Mac. CompyCoach checks *whether* the camera or microphone is in use. It never opens either one.
+
+## Uninstall
+
+Quit CompyCoach from its menu, drag it from Applications to the Trash, and delete `~/Library/Application Support/CompyCoach/` if you want your history gone too.
+
+---
+
+## For developers
+
+Requires a recent Xcode.
+
+| Script | What it does |
+|---|---|
+| `scripts/package.sh` | Builds a Release copy and writes `build/CompyCoach.dmg`, ready to attach to a GitHub release. |
+| `scripts/make-screenshots.sh` | Recaptures every image in `docs/screenshots/` from a debug build. Each takeover fills your screen for a few seconds while it runs. Pass names (`walk eyes`) to redo just those. |
+| `scripts/make-icons.swift` | Regenerates the app and menu bar icons from `logo.svg`. |
+
+Debug builds add test buttons to the bottom of the menu (Trigger Panel, Trigger Walk, Seed Test Data, and so on). The log in `~/Library/Application Support/CompyCoach/log.json` is append-only, one JSON object per line. `targets.json` holds the current targets.
+
+To publish a release, run `scripts/package.sh`, then:
+
+```bash
+gh release create v1.0 build/CompyCoach.dmg --title "CompyCoach 1.0" --notes "…"
+```
+
+The download links above always point at the newest release's `CompyCoach.dmg`.
+
+---
+
+Designed by [Proxy](https://designbyproxy.com).

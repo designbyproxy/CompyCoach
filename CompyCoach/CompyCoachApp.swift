@@ -5,11 +5,55 @@ import ServiceManagement
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         Task { @MainActor in
+            #if DEBUG
+            // scripts/make-screenshots.sh launches the app with `-screenshot <name>` to put one
+            // screen up for capture. Saved data stays unloaded so the screens show a new user's
+            // starting targets, and the nudge timer stays off so nothing else appears.
+            if let name = UserDefaults.standard.string(forKey: "screenshot") {
+                ScreenshotMode.show(name)
+                return
+            }
+            #endif
             DataStore.shared.load()
             TriggerEngine.shared.start()
         }
     }
 }
+
+#if DEBUG
+@MainActor
+enum ScreenshotMode {
+    static var isActive: Bool { UserDefaults.standard.string(forKey: "screenshot") != nil }
+
+    static func show(_ name: String) {
+        let exercises: [String: Exercise] = [
+            "squats": .squats, "pushups": .pushups, "situps": .situps,
+            "stretch": .standStretch, "eyes": .eyeRelax, "walk": .walk,
+        ]
+        if name == "about" {
+            AboutWindowController.shared.show()
+        } else if name == "menu" {
+            // Shows a sample home (never saved) and opens the menu bar menu.
+            WeatherService.shared.useSampleHome()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                NSApp.windows.lazy.compactMap { $0.contentView.flatMap(statusButton(in:)) }
+                    .first?.performClick(nil)
+            }
+        } else if let exercise = exercises[name] {
+            if exercise == .walk { WeatherService.shared.useSampleReading() }
+            InterruptionPanelManager.shared.show(exercise: exercise)
+        } else {
+            print("Unknown screenshot \"\(name)\". Try: about, menu, \(exercises.keys.sorted().joined(separator: ", "))")
+            NSApp.terminate(nil)
+        }
+    }
+
+    private static func statusButton(in view: NSView) -> NSStatusBarButton? {
+        if let button = view as? NSStatusBarButton { return button }
+        return view.subviews.lazy.compactMap(statusButton(in:)).first
+    }
+}
+#endif
 
 @main
 struct CompyCoachApp: App {
@@ -110,6 +154,7 @@ private struct MenuBarContent: View {
         }
 
         #if DEBUG
+        if !ScreenshotMode.isActive {
         Divider()
         Button("Trigger Panel") {
             InterruptionPanelManager.shared.show(exercise: .squats)
@@ -140,6 +185,7 @@ private struct MenuBarContent: View {
         }
         Button("Seed Test Data") {
             DataStore.shared.seedTestData()
+        }
         }
         #endif
     }

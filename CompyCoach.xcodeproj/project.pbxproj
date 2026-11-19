@@ -8,13 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		5B8F02D82FD5CE4100CE2AC4 /* BigShoulders-VariableFont_opsz,wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 5B8F02D72FD5CE4100CE2AC4 /* BigShoulders-VariableFont_opsz,wght.ttf */; };
-		CC00000000000000000000A1 /* Harmattan-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000000A0 /* Harmattan-Regular.ttf */; };
-		CC00000000000000000000B1 /* Harmattan-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000000B0 /* Harmattan-Medium.ttf */; };
-		CC00000000000000000000C1 /* Cabin-VariableFont_wdth,wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000000C0 /* Cabin-VariableFont_wdth,wght.ttf */; };
-		CC0000000000000000000081 /* DBPTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000080 /* DBPTheme.swift */; };
-		CC0000000000000000000091 /* AboutWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000090 /* AboutWindow.swift */; };
-		CC00000000000000000000D1 /* ExtrudedText.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000000D0 /* ExtrudedText.swift */; };
-		CC00000000000000000000E1 /* HeadsUp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000000E0 /* HeadsUp.swift */; };
 		CC0000000000000000000004 /* CompyCoachApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000003 /* CompyCoachApp.swift */; };
 		CC0000000000000000000014 /* InterruptionPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000013 /* InterruptionPanel.swift */; };
 		CC0000000000000000000024 /* TriggerEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000023 /* TriggerEngine.swift */; };
@@ -23,17 +16,17 @@
 		CC0000000000000000000051 /* CallDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000050 /* CallDetector.swift */; };
 		CC0000000000000000000061 /* WeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000060 /* WeatherService.swift */; };
 		CC0000000000000000000071 /* ActiveCountdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000070 /* ActiveCountdown.swift */; };
+		CC0000000000000000000081 /* DBPTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000080 /* DBPTheme.swift */; };
+		CC0000000000000000000091 /* AboutWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000090 /* AboutWindow.swift */; };
+		CC00000000000000000000A1 /* Harmattan-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000000A0 /* Harmattan-Regular.ttf */; };
+		CC00000000000000000000B1 /* Harmattan-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000000B0 /* Harmattan-Medium.ttf */; };
+		CC00000000000000000000C1 /* Cabin-VariableFont_wdth,wght.ttf in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000000C0 /* Cabin-VariableFont_wdth,wght.ttf */; };
+		CC00000000000000000000D1 /* ExtrudedText.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000000D0 /* ExtrudedText.swift */; };
+		CC00000000000000000000E1 /* HeadsUp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000000E0 /* HeadsUp.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		5B8F02D72FD5CE4100CE2AC4 /* BigShoulders-VariableFont_opsz,wght.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "BigShoulders-VariableFont_opsz,wght.ttf"; sourceTree = "<group>"; };
-		CC00000000000000000000A0 /* Harmattan-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Harmattan-Regular.ttf; sourceTree = "<group>"; };
-		CC00000000000000000000B0 /* Harmattan-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Harmattan-Medium.ttf; sourceTree = "<group>"; };
-		CC00000000000000000000C0 /* Cabin-VariableFont_wdth,wght.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Cabin-VariableFont_wdth,wght.ttf"; sourceTree = "<group>"; };
-		CC0000000000000000000080 /* DBPTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DBPTheme.swift; sourceTree = "<group>"; };
-		CC0000000000000000000090 /* AboutWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutWindow.swift; sourceTree = "<group>"; };
-		CC00000000000000000000D0 /* ExtrudedText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtrudedText.swift; sourceTree = "<group>"; };
-		CC00000000000000000000E0 /* HeadsUp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadsUp.swift; sourceTree = "<group>"; };
 		CC0000000000000000000003 /* CompyCoachApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompyCoachApp.swift; sourceTree = "<group>"; };
 		CC0000000000000000000005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		CC0000000000000000000009 /* CompyCoach.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CompyCoach.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -44,6 +37,13 @@
 		CC0000000000000000000050 /* CallDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallDetector.swift; sourceTree = "<group>"; };
 		CC0000000000000000000060 /* WeatherService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherService.swift; sourceTree = "<group>"; };
 		CC0000000000000000000070 /* ActiveCountdown.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveCountdown.swift; sourceTree = "<group>"; };
+		CC0000000000000000000080 /* DBPTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DBPTheme.swift; sourceTree = "<group>"; };
+		CC0000000000000000000090 /* AboutWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutWindow.swift; sourceTree = "<group>"; };
+		CC00000000000000000000A0 /* Harmattan-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Harmattan-Regular.ttf"; sourceTree = "<group>"; };
+		CC00000000000000000000B0 /* Harmattan-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Harmattan-Medium.ttf"; sourceTree = "<group>"; };
+		CC00000000000000000000C0 /* Cabin-VariableFont_wdth,wght.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Cabin-VariableFont_wdth,wght.ttf"; sourceTree = "<group>"; };
+		CC00000000000000000000D0 /* ExtrudedText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtrudedText.swift; sourceTree = "<group>"; };
+		CC00000000000000000000E0 /* HeadsUp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadsUp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -125,7 +125,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1600;
-				LastUpgradeCheck = 1600;
+				LastUpgradeCheck = 2720;
 				TargetAttributes = {
 					CC0000000000000000000002 = {
 						CreatedOnToolsVersion = 16.0;
@@ -194,27 +194,46 @@
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
 				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -227,21 +246,39 @@
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MTL_FAST_MATH = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 			};
@@ -254,6 +291,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = CompyCoach/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -277,6 +315,7 @@
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = CompyCoach/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

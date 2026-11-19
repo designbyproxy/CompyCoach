@@ -187,6 +187,22 @@ final class WeatherService: ObservableObject {
         return reading
     }
 
+    #if DEBUG
+    /// Fixed walk-friendly conditions for scripts/make-screenshots.sh, so screenshots never depend
+    /// on (or reveal) the real weather at home.
+    func useSampleReading() {
+        lastReading = Reading(temperatureF: 64, feelsLikeF: 64, precipitationMM: 0,
+                              rainChanceNextHourPct: 0, weatherCode: 0, fetchedAt: Date())
+    }
+
+    /// A sample home for the menu screenshot. Nothing is saved, so the real home ZIP is untouched.
+    func useSampleHome() {
+        homeZIP = "90210"
+        homePlaceName = "Beverly Hills, California"
+        useSampleReading()
+    }
+    #endif
+
     // MARK: Helpers
 
     private func fetch(_ url: URL) async throws -> Data {
