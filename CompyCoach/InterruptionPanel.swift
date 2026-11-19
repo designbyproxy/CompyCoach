@@ -18,6 +18,9 @@ final class InterruptionPanelManager {
 
     private var panel: InterruptionNSPanel?
     private var hostingController: NSHostingController<InterruptionView>?
+    // Set from the first Confirm / "not now" until the fade-out finishes, so a double
+    // click or a second Return during the fade can't log the exercise twice.
+    private var dismissing = false
 
     var isShowing: Bool { panel != nil }
 
@@ -48,13 +51,15 @@ final class InterruptionPanelManager {
         p.hidesOnDeactivate = false
 
         let onConfirm: (Int?) -> Void = { [weak self] logged in
+            guard let self, !self.dismissing else { return }
             DataStore.shared.append(exercise: exercise, target: target, logged: logged)
-            self?.dismiss()
+            self.dismiss()
         }
 
         let onNotNow: () -> Void = { [weak self] in
+            guard let self, !self.dismissing else { return }
             TriggerEngine.shared.deferWalk()
-            self?.dismiss()
+            self.dismiss()
         }
 
         let view = InterruptionView(exercise: exercise, target: target,
@@ -85,7 +90,9 @@ final class InterruptionPanelManager {
     }
 
     func dismiss() {
-        guard let p = panel else { return }
+        guard let p = panel, !dismissing else { return }
+        dismissing = true
+        p.ignoresMouseEvents = true
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = reduceMotion ? 0.15 : 0.45
             ctx.timingFunction = CAMediaTimingFunction(name: .easeIn)
@@ -96,6 +103,7 @@ final class InterruptionPanelManager {
                 if self?.panel === p {
                     self?.panel = nil
                     self?.hostingController = nil
+                    self?.dismissing = false
                 }
             }
         })

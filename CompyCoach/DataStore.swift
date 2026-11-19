@@ -179,10 +179,15 @@ final class DataStore: ObservableObject {
         line += "\n"
         guard let lineData = line.data(using: .utf8) else { return }
 
-        if let handle = FileHandle(forWritingAtPath: path) {
-            handle.seekToEndOfFile()
-            handle.write(lineData)
-            handle.closeFile()
+        // The throwing FileHandle APIs report a full disk or I/O error as a Swift error;
+        // the legacy seekToEndOfFile()/write(_:) raise an Objective-C exception and crash.
+        guard let handle = FileHandle(forWritingAtPath: path) else { return }
+        defer { try? handle.close() }
+        do {
+            try handle.seekToEnd()
+            try handle.write(contentsOf: lineData)
+        } catch {
+            // Drop this one entry rather than take the app down; it's still in memory.
         }
     }
 
