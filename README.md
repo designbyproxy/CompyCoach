@@ -62,6 +62,7 @@ Click the icon in the menu bar to see:
 - **Set Home ZIP for Walk Weather…**
 - **Launch at Login** and **10-Second Heads-Up**
 - **Skip Next** to push the next break back a full interval
+- **Check for Updates…** to see if there's a newer version
 - **About CompyCoach** and **Quit**
 
 ## How targets change
@@ -78,7 +79,7 @@ Starting targets are 10 squats, 8 push-ups, and 12 sit-ups. Targets never drop b
 
 CompyCoach has no account, no analytics, and no tracking. Your log and targets stay on your Mac in `~/Library/Application Support/CompyCoach/`.
 
-The app only goes online for walk weather, and only if you add a ZIP code. It sends the ZIP to [Open-Meteo](https://open-meteo.com) once to look up your coordinates, then sends those coordinates to check the forecast, at most every 30 minutes.
+The app only goes online for walk weather, and only if you add a ZIP code. It sends the ZIP to [Open-Meteo](https://open-meteo.com) once to look up your coordinates, then sends those coordinates to check the forecast, at most every 30 minutes. It also contacts GitHub when you pick **Check for Updates…** from the menu, and only then.
 
 Call detection runs entirely on your Mac. CompyCoach checks *whether* the camera or microphone is in use. It never opens either one.
 

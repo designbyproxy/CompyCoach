@@ -149,6 +149,10 @@ private struct MenuBarContent: View {
             DispatchQueue.main.async { AboutWindowController.shared.show() }
         }
 
+        Button("Check for Updates…") {
+            DispatchQueue.main.async { UpdateCheck.run() }
+        }
+
         Button("Quit CompyCoach") {
             NSApplication.shared.terminate(nil)
         }
@@ -257,6 +261,78 @@ enum HomeZIPPrompt {
                 err.informativeText = error.localizedDescription
                 err.runModal()
             }
+        }
+    }
+}
+
+// MARK: - Update check
+
+/// Asks GitHub for the latest release and offers its download page if it's newer than
+/// this copy. Only runs when picked from the menu, so the app never phones home on its own.
+@MainActor
+enum UpdateCheck {
+    private static let latestReleaseAPI =
+        URL(string: "https://api.github.com/repos/designbyproxy/CompyCoach/releases/latest")!
+
+    private struct Release: Decodable {
+        let tag_name: String
+        let html_url: URL
+    }
+
+    static func run() {
+        let current = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
+        Task { @MainActor in
+            let alert = NSAlert()
+            do {
+                var req = URLRequest(url: latestReleaseAPI)
+                req.timeoutInterval = 10
+                req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+                let (data, response) = try await URLSession.shared.data(for: req)
+                guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+                    throw URLError(.badServerResponse)
+                }
+                let release = try JSONDecoder().decode(Release.self, from: data)
+                let latest = release.tag_name.trimmingCharacters(in: CharacterSet(charactersIn: "vV"))
+
+                if isNewer(latest, than: current) {
+                    alert.messageText = "CompyCoach \(latest) is available"
+                    alert.informativeText = "You have \(current). Download the new version, quit CompyCoach, "
+                        + "and drag the new copy into Applications to replace this one. Your history and targets carry over."
+                    alert.addButton(withTitle: "Download")
+                    alert.addButton(withTitle: "Later")
+                    activate()
+                    if alert.runModal() == .alertFirstButtonReturn {
+                        NSWorkspace.shared.open(release.html_url)
+                    }
+                    return
+                }
+                alert.messageText = "You're up to date"
+                alert.informativeText = "CompyCoach \(current) is the newest version."
+            } catch {
+                alert.messageText = "Couldn't check for updates"
+                alert.informativeText = "Check your internet connection and try again."
+            }
+            activate()
+            alert.runModal()
+        }
+    }
+
+    /// Compares dotted version numbers, so 1.0.10 is newer than 1.0.9.
+    static func isNewer(_ a: String, than b: String) -> Bool {
+        let x = a.split(separator: ".").map { Int($0) ?? 0 }
+        let y = b.split(separator: ".").map { Int($0) ?? 0 }
+        for i in 0..<max(x.count, y.count) {
+            let l = i < x.count ? x[i] : 0, r = i < y.count ? y[i] : 0
+            if l != r { return l > r }
+        }
+        return false
+    }
+
+    private static func activate() {
+        if #available(macOS 14.0, *) {
+            NSApp.activate()
+        } else {
+            NSApp.activate(ignoringOtherApps: true)
         }
     }
 }
