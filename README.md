@@ -62,8 +62,9 @@ Click the icon in the menu bar to see:
 - **Set Home ZIP for Walk Weather…**
 - **Launch at Login** and **10-Second Heads-Up**
 - **Skip Next** to push the next break back a full interval
+- **About CompyCoach**
 - **Check for Updates…** to see if there's a newer version
-- **About CompyCoach** and **Quit**
+- **Quit CompyCoach**
 
 ## How targets change
 
