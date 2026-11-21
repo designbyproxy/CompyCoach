@@ -19,7 +19,7 @@ When a break comes due, CompyCoach fills your screen with one clear ask. There's
 
 ![Time to go for a walk, 64° and clear](docs/screenshots/walk.png)
 
-**Walks.** Once a day it suggests a walk, with the weather at home alongside. Not a good moment? Tap "I can't right now" and it comes back later.
+**Walks.** Once a day it suggests a walk, with the weather at home alongside. Not a good moment? Tap "I can't right now" and a desk exercise takes its place in 10 to 15 minutes, with the walk coming back once a couple of hours later. Pass on it again and that's it for the day.
 
 ## It picks its moments
 

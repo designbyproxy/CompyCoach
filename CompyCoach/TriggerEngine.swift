@@ -91,9 +91,15 @@ final class TriggerEngine: ObservableObject {
     private var sampleInFlight = false
     private var rotationIndex = 0
 
-    // Set when the user taps "I can't right now" on a walk — forces the walk to
-    // resurface on the next interruption instead of waiting a full rotation.
-    private var walkDeferred = false
+    // Times the user tapped "I can't right now" on a walk. The first one today brings
+    // the walk back once, a couple of hours later; the second retires it until tomorrow.
+    private var walkSkips: [Date] = []
+
+    // How long a put-off walk waits before it's offered again.
+    private static let walkRetryDelay: TimeInterval = 2 * 60 * 60
+
+    // Active time before a desk exercise stands in for a walk that was put off.
+    private static let walkStandInDelay: ClosedRange<TimeInterval> = 10 * 60 ... 15 * 60
 
     // Set when the walk's turn came up but the weather was too cold or wet.
     // The walk is offered again on later nudges today once conditions improve.
@@ -129,12 +135,18 @@ final class TriggerEngine: ObservableObject {
         publish()
     }
 
-    /// Called when the user taps "I can't right now" on a walk. Logs a skip and
-    /// arranges for the walk to come back on the next interruption.
+    /// Called when the user taps "I can't right now" on a walk. Logs a skip; the first
+    /// one today brings the walk back later, the second drops it for the day. Either way
+    /// a desk exercise stands in for it soon, rather than waiting a full interval.
     func deferWalk() {
-        walkDeferred = true
+        walkSkips.append(Date())
         DataStore.shared.logSkip()
+        countdown.restart(remaining: TimeInterval.random(in: Self.walkStandInDelay))
+        publish()
     }
+
+    /// True when the walk has already been put off once today, so this offer is the last.
+    var isFinalWalkOfferToday: Bool { walkSkipsToday().count == 1 }
 
     // MARK: Sampling
 
@@ -187,14 +199,17 @@ final class TriggerEngine: ObservableObject {
     // MARK: Exercise selection
 
     private func nextExercise() async -> Exercise {
-        let walkPending = (walkDeferred || isWalkOwedToday()) && !isWalkDoneToday()
+        let skips = walkSkipsToday()
+        let walkOffToday = isWalkDoneToday() || skips.count >= 2
+        let retryDue = skips.count == 1 && Date() >= skips[0] + Self.walkRetryDelay
+        // Once put off, the walk only returns through the retry, not the rotation.
+        let walkPending = !walkOffToday && (skips.isEmpty ? isWalkOwedToday() : retryDue)
 
-        // A walk that was skipped-for-now, or bumped by bad weather earlier today,
+        // A walk that was put off for now, or bumped by bad weather earlier today,
         // resurfaces ahead of the rotation as soon as the weather allows it.
         var walkBlockedByWeather = false
         if walkPending {
             if await WeatherService.shared.isWalkWeatherOK() {
-                walkDeferred = false
                 walkOwedDate = nil
                 return .walk
             }
@@ -209,8 +224,8 @@ final class TriggerEngine: ObservableObject {
 
             guard case .walk = exercise else { return exercise }
 
-            // Don't repeat the walk once it's actually been completed today.
-            if isWalkDoneToday() { continue }
+            // Don't repeat the walk once it's done, or once it's been put off today.
+            if walkOffToday || !skips.isEmpty { continue }
 
             // Too cold or wet: substitute the next exercise, but keep the walk owed
             // so it comes back once conditions improve.
@@ -219,6 +234,11 @@ final class TriggerEngine: ObservableObject {
             walkOwedDate = Date()
             continue
         }
+    }
+
+    private func walkSkipsToday() -> [Date] {
+        walkSkips.removeAll { !Calendar.current.isDateInToday($0) }
+        return walkSkips
     }
 
     private func isWalkOwedToday() -> Bool {

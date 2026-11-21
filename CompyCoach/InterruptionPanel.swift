@@ -64,6 +64,8 @@ final class InterruptionPanelManager {
 
         let view = InterruptionView(exercise: exercise, target: target,
                                     weather: WeatherService.shared.lastReading,
+                                    notNowLabel: TriggerEngine.shared.isFinalWalkOfferToday
+                                        ? "Skip for today" : "I can't right now",
                                     onConfirm: onConfirm, onNotNow: onNotNow)
         let controller = NSHostingController(rootView: view)
         p.contentViewController = controller
@@ -143,6 +145,7 @@ struct InterruptionView: View {
     let exercise: Exercise
     let target: Int
     let weather: WeatherService.Reading?
+    let notNowLabel: String
     let onConfirm: (_ logged: Int?) -> Void
     let onNotNow: () -> Void
 
@@ -198,7 +201,7 @@ struct InterruptionView: View {
                         .buttonStyle(DBPPrimaryButtonStyle(height: m.buttonHeight, fontSize: m.buttonFont))
                         .keyboardShortcut(.defaultAction)
                         .frame(width: m.span(4))
-                    Button("I can't right now", action: onNotNow)
+                    Button(notNowLabel, action: onNotNow)
                         .buttonStyle(DBPOutlineButtonStyle(height: m.buttonHeight, fontSize: m.buttonFont))
                         .frame(width: m.span(4))
                 }
