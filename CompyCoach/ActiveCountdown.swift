@@ -18,11 +18,17 @@ struct ActiveCountdown {
         case showingPanel    // a nudge is on screen
     }
 
-    // No input for this long counts as away.
-    static let awayThreshold: TimeInterval = 3 * 60
+    // No input for this long counts as away. Long enough that reading or watching
+    // something still counts as being at the desk; the idle stretch is refunded either way.
+    static let awayThreshold: TimeInterval = 10 * 60
 
-    // After any pause ends, at least this much active time remains before a nudge,
-    // so you're never ambushed the moment you hang up or sit back down.
+    // A nudge that comes due after this much idle time is held until you're back,
+    // so it doesn't land on an empty desk during the long away threshold.
+    static let dueIdleHold: TimeInterval = 2 * 60
+
+    // The first time a pause ends close to a nudge, at least this much active time
+    // remains, so you're not ambushed the moment you hang up or sit back down. Only
+    // once per interval, so popping in and out can't keep pushing a due nudge back.
     static let resumeGrace: TimeInterval = 2 * 60
 
     // A gap between samples longer than this (sleep, a stalled main thread) is
@@ -38,6 +44,13 @@ struct ActiveCountdown {
     // from this.
     private var countedSinceResume: TimeInterval = 0
 
+    // Idle time at the last counted sample. If the Mac then sleeps before the away
+    // threshold, this is the idle stretch to refund on wake.
+    private var lastIdle: TimeInterval = 0
+
+    // Whether this interval has already used its resume grace.
+    private var graceGiven = false
+
     init(remaining: TimeInterval, now: Date, maxSampleGap: TimeInterval) {
         self.remaining = remaining
         self.lastSample = now
@@ -48,6 +61,7 @@ struct ActiveCountdown {
     mutating func restart(remaining: TimeInterval) {
         self.remaining = remaining
         countedSinceResume = 0
+        graceGiven = false
     }
 
     /// Feeds one sample of the world. Returns true when a nudge is due now.
@@ -55,11 +69,16 @@ struct ActiveCountdown {
         let gap = max(0, now.timeIntervalSince(lastSample))
         lastSample = now
 
+        // Away after the full threshold, or sooner if a nudge is about to come due (and
+        // then until you're back, so the refunded time doesn't count down on an empty desk).
+        let away = idleSeconds >= Self.awayThreshold
+            || (idleSeconds >= Self.dueIdleHold && (status == .pausedAway || remaining <= gap))
+
         let next: Status
-        if panelShowing                        { next = .showingPanel }
-        else if inCall                         { next = .pausedCall }
-        else if idleSeconds >= Self.awayThreshold { next = .pausedAway }
-        else                                   { next = .running }
+        if panelShowing   { next = .showingPanel }
+        else if inCall    { next = .pausedCall }
+        else if away      { next = .pausedAway }
+        else              { next = .running }
 
         // Paused (or staying paused): nothing is counted for this gap.
         guard next == .running else {
@@ -77,14 +96,24 @@ struct ActiveCountdown {
         // Resuming from a pause or a sleep-sized gap: don't count the gap, and make
         // sure there's a little breathing room before the next nudge.
         if status != .running || gap > maxSampleGap {
+            if status == .running {
+                // Slept straight from running: refund the idle stretch before the sleep,
+                // which the away check never got to.
+                remaining += min(lastIdle, countedSinceResume)
+            }
             status = .running
             countedSinceResume = 0
-            remaining = max(remaining, Self.resumeGrace)
+            lastIdle = idleSeconds
+            if !graceGiven, remaining < Self.resumeGrace {
+                remaining = Self.resumeGrace
+                graceGiven = true
+            }
             return false
         }
 
         remaining -= gap
         countedSinceResume += gap
+        lastIdle = idleSeconds
         if remaining <= 0 {
             remaining = 0
             return true

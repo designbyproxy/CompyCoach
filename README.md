@@ -26,10 +26,10 @@ When a break comes due, CompyCoach fills your screen with one clear ask. There's
 CompyCoach counts down active time at the keyboard, and the countdown sits still whenever interrupting you would be rude or pointless:
 
 - **On a call.** If another app is using your camera or microphone, or someone is screen sharing with you, it waits until you hang up.
-- **Away from your desk.** After 3 minutes without a keystroke or mouse move it pauses, and it doesn't count the time you were gone.
+- **Away from your desk.** After 10 minutes without a keystroke or mouse move it pauses, and it doesn't count the time you were gone. Reading or watching something for a few minutes still counts as being at your desk. If a break comes due after you've been still for 2 minutes, it waits for you to come back.
 - **Asleep.** Closing the lid pauses it too.
 
-After any pause you get at least 2 minutes back at your desk before a break can start, so it never pounces the second you sit down. Breaks land somewhere between 45 and 75 minutes apart.
+When you come back from a pause, you get at least 2 minutes before a break can start, so it never pounces the second you sit down. That cushion comes once per break, so stepping in and out can't keep pushing a break back. Breaks land somewhere between 45 and 75 minutes apart.
 
 **Walks wait for decent weather.** Add your ZIP code from the menu and CompyCoach skips the walk when it feels colder than 45°F, when it's raining or snowing, or when rain looks likely in the next hour. It offers the walk again later that day once things clear up. Without a ZIP, walks are always on the table.
 
