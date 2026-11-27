@@ -152,16 +152,20 @@ final class DataStore: ObservableObject {
     // MARK: Private: recalculate(for:)
 
     private func recalculate(for key: String) {
+        let current = targets[key] ?? DataStore.defaultTargets[key] ?? 1
+        let floor = DataStore.minimumTargets[key] ?? 1
+
+        // A miss against a higher target than today's says nothing about today's target,
+        // so once the target drops (or is reset by hand) those old misses stop holding it back.
         let sevenDaysAgo = Date().addingTimeInterval(-7 * 24 * 60 * 60)
-        let recent = entries.filter { $0.exercise == key && $0.timestamp >= sevenDaysAgo }
+        let recent = entries.filter {
+            $0.exercise == key && $0.timestamp >= sevenDaysAgo && ($0.hit || $0.target <= current)
+        }
         guard !recent.isEmpty else { return }
 
         let count = recent.count
         let hits = recent.filter { $0.hit }.count
         let hitRate = Double(hits) / Double(count)
-
-        let current = targets[key] ?? DataStore.defaultTargets[key] ?? 1
-        let floor = DataStore.minimumTargets[key] ?? 1
 
         if hitRate >= 0.8 {
             let newTarget = max(current + 1, Int((Double(current) * 1.1).rounded()))
