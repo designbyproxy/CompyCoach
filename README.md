@@ -74,6 +74,8 @@ After a squat, push-up, or sit-up break, CompyCoach looks at your last 7 days of
 - Hit it **half the time or less** and it comes down about 10%.
 - Anywhere in between, it stays put.
 
+Misses against a higher target than today's don't count, so after a target comes down it can climb again as soon as you're hitting it.
+
 Starting targets are 10 squats, 8 push-ups, and 12 sit-ups. Targets never drop below 5 squats, 4 push-ups, or 5 sit-ups. Stretches stay at 45 seconds and eye breaks at 20.
 
 ## Privacy
